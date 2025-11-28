@@ -7,7 +7,7 @@ import {
   ShieldCheck, ExternalLink, Camera, UploadCloud, Menu, FileText, Calendar, User
 } from 'lucide-react';
 
-// --- LIBRERÍAS REALES (PRODUCCIÓN) ---
+// --- LIBRERÍAS REALES ---
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import { createClient } from '@supabase/supabase-js';
@@ -15,22 +15,28 @@ import { createClient } from '@supabase/supabase-js';
 // ==================================================================================
 // 🔧 CONFIGURACIÓN DE MODO
 // ==================================================================================
-const USE_MOCK_DATA = false; // <--- FALSE: MODO PRODUCCIÓN REAL
+const USE_MOCK_DATA = false; // FALSE = Producción Real
 
-// --- CLIENTE SUPABASE ---
-let supabase;
+// --- CLIENTE SUPABASE (CON CONTROL DE ERRORES) ---
+let supabase = null;
 
-if (!USE_MOCK_DATA) {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  
-  if (!supabaseUrl || !supabaseKey) {
-      console.error("🔴 ERROR: Faltan variables de entorno en .env.local");
-  } else {
+try {
+  if (!USE_MOCK_DATA) {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    // Validación crítica: Si faltan las llaves, no intentamos conectar para evitar el crash
+    if (supabaseUrl && supabaseKey) {
       supabase = createClient(supabaseUrl, supabaseKey);
+    } else {
+      console.warn("⚠️ Faltan credenciales de Supabase en .env.local");
+    }
+  } else {
+    // Mock simple para modo diseño
+    console.warn("⚠️ Modo Mock Activado");
   }
-} else {
-  console.warn("⚠️ MODO MOCK ACTIVADO POR ERROR");
+} catch (error) {
+  console.error("Error inicializando Supabase:", error);
 }
 
 // ==================================================================================
@@ -53,9 +59,21 @@ const LoginView = ({ onLogin }) => {
     e.preventDefault();
     setLoading(true);
     
+    // BLINDAJE: Si supabase no existe, mostramos alerta en vez de crashear
+    if (!supabase) {
+        alert("Error de Configuración: No se detectaron las llaves de Supabase.\n\nVerifica que creaste el archivo .env.local con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.");
+        setLoading(false);
+        return;
+    }
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      if (USE_MOCK_DATA) {
+        onLogin();
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        // El listener global manejará el cambio de estado
+      }
     } catch (error) {
       alert("Error al ingresar: " + error.message);
       setLoading(false);
@@ -99,6 +117,8 @@ const DashboardView = ({ onNavigate }) => {
 
   useEffect(() => {
     async function loadData() {
+        if (!supabase) return; // Protección contra null
+        
         const { count: clientsCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
         const { count: assetsCount } = await supabase.from('assets').select('*', { count: 'exact', head: true });
         const { count: criticalCount } = await supabase.from('assets').select('*', { count: 'exact', head: true }).eq('status', 'vencido');
@@ -122,14 +142,17 @@ const DashboardView = ({ onNavigate }) => {
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-800">Próximos Vencimientos</h3>{loading && <Loader2 className="animate-spin text-blue-500" size={18} />}</div>
         <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500 font-medium"><tr><th className="px-6 py-3">Cliente</th><th className="px-6 py-3">Activo</th><th className="px-6 py-3">Estado</th><th className="px-6 py-3 text-right">Acción</th></tr></thead>
-          <tbody className="divide-y divide-gray-100">{recent.map(asset => (
+          <tbody className="divide-y divide-gray-100">
+            {recent.map(asset => (
             <tr key={asset.id} className="hover:bg-blue-50/50 cursor-pointer" onClick={() => onNavigate('detail')}>
               <td className="px-6 py-4 font-semibold text-gray-900">{asset.clients?.name}</td>
               <td className="px-6 py-4 text-gray-600">{asset.name}</td>
               <td className="px-6 py-4"><span className={`px-2 py-1 rounded text-xs font-bold flex w-fit gap-1 ${asset.status === 'vencido' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{asset.status === 'vencido' ? <AlertTriangle size={12}/> : <CheckCircle2 size={12}/>} {asset.status}</span></td>
               <td className="px-6 py-4 text-right text-blue-600 font-bold text-xs">Ver Ficha →</td>
             </tr>
-          ))}</tbody>
+          ))}
+          {recent.length === 0 && !loading && <tr><td colSpan="5" className="p-4 text-center text-gray-400">No hay datos registrados</td></tr>}
+          </tbody>
         </table>
       </div>
     </div>
@@ -145,6 +168,7 @@ const ClientPortfolioView = ({ onNavigate }) => {
 
   useEffect(() => { 
     async function load() {
+        if (!supabase) return;
         const { data } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
         setClients(data || []);
         setLoading(false);
@@ -154,6 +178,7 @@ const ClientPortfolioView = ({ onNavigate }) => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    if (!supabase) return;
     const { error } = await supabase.from('clients').insert([{ ...newClient, image_url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000' }]);
     if (!error) {
         setShowModal(false);
@@ -200,7 +225,7 @@ const AssetDetailView = ({ onBack }) => {
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    const publicLink = `${window.location.origin}/?view=public`;
+    const publicLink = typeof window !== 'undefined' ? `${window.location.origin}/?view=public` : 'https://certify-pro.vercel.app/?view=public';
     QRCode.toDataURL(publicLink).then(setQrUrl);
   }, []);
 
@@ -258,31 +283,34 @@ const InspectorDemo = ({ onExit }) => (
   </div>
 );
 
-// 6. PUBLIC QR VIEW (CON TABS)
+// 6. PUBLIC QR VIEW (CON PESTAÑAS Y BITÁCORA)
 const PublicQRDemo = ({ onExit }) => {
   const [activeTab, setActiveTab] = useState('certificate');
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    QRCode.toDataURL(window.location.href).then(setQrUrl);
+    // Genera un QR que apunta a la URL actual
+    const publicLink = typeof window !== 'undefined' ? window.location.href : 'https://certifypro.vercel.app';
+    QRCode.toDataURL(publicLink).then(setQrUrl);
   }, []);
 
   const generatePDF = () => {
     const doc = new jsPDF();
     doc.setLineWidth(1); doc.setDrawColor(34, 197, 94); doc.rect(10, 10, 190, 277);
     doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(30, 58, 138); 
-    doc.text("CERTIFICADO DE MANTENCIÓN", 105, 40, null, null, "center");
+    doc.text("CERTIFICADO DE CONFORMIDAD", 105, 40, null, null, "center");
     doc.setFillColor(240); doc.rect(20, 155, 80, 60, 'FD'); doc.rect(110, 155, 80, 60, 'FD');
-    doc.setFontSize(10); doc.setTextColor(150); doc.text("EVIDENCIA VISUAL", 105, 150, null, null, "center");
+    doc.setFontSize(10); doc.setTextColor(150); doc.text("FOTO 1: CABINA", 60, 185, null, null, "center");
+    doc.text("FOTO 2: MÁQUINAS", 150, 185, null, null, "center");
     if(qrUrl) doc.addImage(qrUrl, 'PNG', 160, 230, 30, 30);
-    doc.save("Certificado_Oficial.pdf");
+    doc.save("Certificado_Oficial_Ascensor.pdf");
   };
 
   const bitacora = [
-    { fecha: "15 Nov 2024", evento: "Certificación Anual", tecnico: "Jaime Soto", s: "Aprobado" },
-    { fecha: "10 Oct 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", s: "Ok" },
-    { fecha: "12 Sep 2024", evento: "Cambio de Rodamientos", tecnico: "Carlos R.", s: "Corregido" },
-    { fecha: "10 Ago 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", s: "Ok" },
+    { fecha: "15 Nov 2024", evento: "Certificación Anual", tecnico: "Jaime Soto", resultado: "Aprobado" },
+    { fecha: "10 Oct 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", resultado: "Ok" },
+    { fecha: "12 Sep 2024", evento: "Cambio de Rodamientos", tecnico: "Carlos R.", resultado: "Corregido" },
+    { fecha: "10 Ago 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", resultado: "Ok" },
   ];
 
   return (
@@ -291,17 +319,21 @@ const PublicQRDemo = ({ onExit }) => {
       <div className="bg-white max-w-md w-full rounded-2xl shadow-2xl overflow-hidden relative z-10 border border-gray-100 flex flex-col max-h-[90vh]">
         <div className="bg-green-600 text-white p-6 text-center shrink-0">
           <div className="bg-white/20 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 backdrop-blur-sm"><CheckCircle2 size={24} className="text-white" /></div>
-          <h1 className="text-xl font-bold tracking-tight">EQUIPO VIGENTE</h1>
+          <h1 className="text-xl font-bold tracking-tight">EQUIPO CERTIFICADO</h1>
           <p className="text-green-100 text-xs font-medium uppercase tracking-wider">Apto para uso público</p>
         </div>
+        
+        {/* PESTAÑAS (TABS) */}
         <div className="flex border-b border-gray-100 bg-gray-50/50">
           <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
-            <FileText size={16} /> Certificado
+            <FileText size={18} /> Certificado
           </button>
           <button onClick={() => setActiveTab('bitacora')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'bitacora' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
-            <History size={16} /> Bitácora
+            <History size={18} /> Bitácora
           </button>
         </div>
+
+        {/* CONTENIDO TABS */}
         <div className="flex-1 overflow-y-auto p-0 bg-white">
           {activeTab === 'certificate' && (
             <div className="p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -321,7 +353,7 @@ const PublicQRDemo = ({ onExit }) => {
                   <div className="flex-1">
                     <div className="flex justify-between items-start"><h4 className="text-sm font-bold text-gray-900">{log.evento}</h4><span className="text-xs text-gray-400 font-medium">{log.fecha}</span></div>
                     <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><User size={10} /> {log.tecnico}</p>
-                    <span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${['Aprobado', 'Ok'].includes(log.s) ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700'}`}>{log.s}</span>
+                    <span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${['Aprobado', 'Ok'].includes(log.resultado) ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700'}`}>{log.resultado}</span>
                   </div>
                 </div>
               ))}
