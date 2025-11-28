@@ -1,4 +1,3 @@
-const VITE_SUPABASE_URL;
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, FileCheck, Smartphone, QrCode, LogOut, 
@@ -17,7 +16,7 @@ import { createClient } from '@supabase/supabase-js';
 // 🔧 CONFIGURACIÓN
 // ==================================================================================
 const USE_MOCK_DATA = false; // FALSE = Producción Real (Usa .env.local)
-
+ 
 // --- INICIALIZACIÓN BLINDADA DE SUPABASE ---
 let supabase = null;
 
