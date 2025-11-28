@@ -13,11 +13,11 @@ import QRCode from 'qrcode';
 import { createClient } from '@supabase/supabase-js';
 
 // ==================================================================================
-// 🔧 CONFIGURACIÓN DE MODO
+// 🔧 CONFIGURACIÓN
 // ==================================================================================
-const USE_MOCK_DATA = false; // FALSE = Producción Real
+const USE_MOCK_DATA = false; // FALSE = Producción Real (Usa .env.local)
 
-// --- CLIENTE SUPABASE (CON CONTROL DE ERRORES) ---
+// --- INICIALIZACIÓN BLINDADA DE SUPABASE ---
 let supabase = null;
 
 try {
@@ -25,22 +25,34 @@ try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    // Validación crítica: Si faltan las llaves, no intentamos conectar para evitar el crash
     if (supabaseUrl && supabaseKey) {
       supabase = createClient(supabaseUrl, supabaseKey);
+      console.log("✅ Conexión a Supabase inicializada correctamente.");
     } else {
-      console.warn("⚠️ Faltan credenciales de Supabase en .env.local");
+      console.error("🔴 ERROR: Faltan variables VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY en .env.local");
     }
   } else {
-    // Mock simple para modo diseño
-    console.warn("⚠️ Modo Mock Activado");
+    // MOCK DE RESPALDO (Solo si activas USE_MOCK_DATA = true)
+    const mockDB = { clients: [], assets: [] };
+    supabase = {
+        auth: { 
+            signInWithPassword: async () => ({ data: { user: { email: 'demo@certifypro.cl' } }, error: null }),
+            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+            getSession: async () => ({ data: { session: null } }),
+            signOut: async () => {}
+        },
+        from: () => ({ 
+            select: () => ({ order: async () => ({ data: [], error: null }), eq: async () => ({ count: 0 }) }),
+            insert: async () => ({ error: null })
+        })
+    };
   }
 } catch (error) {
-  console.error("Error inicializando Supabase:", error);
+  console.error("🔴 Error Crítico al iniciar Supabase:", error);
 }
 
 // ==================================================================================
-// 1. LOGIN VIEW
+// 1. VISTA LOGIN (CON VALIDACIÓN DE CONEXIÓN)
 // ==================================================================================
 const LoginView = ({ onLogin }) => {
   const images = [
@@ -58,24 +70,26 @@ const LoginView = ({ onLogin }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
-    // BLINDAJE: Si supabase no existe, mostramos alerta en vez de crashear
+
+    // 🛡️ VALIDACIÓN DE SEGURIDAD ANTES DE LLAMAR A AUTH
     if (!supabase) {
-        alert("Error de Configuración: No se detectaron las llaves de Supabase.\n\nVerifica que creaste el archivo .env.local con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.");
+        alert("⚠️ ERROR DE CONEXIÓN:\n\nNo se detectaron las llaves de Supabase.\n\n1. Revisa tu archivo .env.local\n2. Reinicia la terminal (Ctrl+C -> npm run dev)");
         setLoading(false);
         return;
     }
 
     try {
-      if (USE_MOCK_DATA) {
-        onLogin();
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        // El listener global manejará el cambio de estado
-      }
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) throw error;
+      
+      // Si el login es exitoso, el listener global en App() actualizará la vista
+      console.log("Usuario logueado:", data.user);
+
     } catch (error) {
-      alert("Error al ingresar: " + error.message);
+      console.error("Fallo Login:", error);
+      alert("Error de Acceso: " + error.message);
+    } finally {
       setLoading(false);
     }
   };
@@ -89,17 +103,17 @@ const LoginView = ({ onLogin }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/70 to-transparent z-10"/>
         <div className="relative z-10 p-12 text-white max-w-lg">
           <div className="flex items-center gap-3 mb-6"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-lg shadow-lg">C</div><span className="text-2xl font-bold tracking-tight">CertifyPro</span></div>
-          <h1 className="text-4xl font-extrabold mb-4">El Estándar Digital para el Transporte Vertical.</h1>
+          <h1 className="text-4xl font-extrabold mb-4">Gestión de Transporte Vertical.</h1>
           <div className="space-y-3 mt-8">{['Cumplimiento Ley 20.296', 'Trazabilidad QR', 'App Inspector Offline'].map((t, i) => (<div key={i} className="flex gap-3 text-sm font-medium text-slate-200"><CheckCircle2 className="text-green-400" size={18}/> {t}</div>))}</div>
         </div>
       </div>
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="max-w-md w-full space-y-8">
-          <div className="text-center lg:text-left"><h2 className="text-3xl font-bold text-gray-900">Bienvenido</h2><p className="text-gray-500">Accede a tu panel de control.</p></div>
+          <div className="text-center lg:text-left"><h2 className="text-3xl font-bold text-gray-900">Bienvenido</h2><p className="text-gray-500">Acceso corporativo seguro.</p></div>
           <form className="space-y-6" onSubmit={handleLogin}>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border rounded-xl" placeholder="admin@empresa.com" /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3 border rounded-xl" placeholder="••••••" /></div>
-            <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 flex justify-center items-center gap-2">
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••" required /></div>
+            <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 flex justify-center items-center gap-2 disabled:opacity-50">
                 {loading ? <Loader2 className="animate-spin"/> : <>Ingresar <ArrowRight size={18}/></>}
             </button>
           </form>
@@ -109,7 +123,9 @@ const LoginView = ({ onLogin }) => {
   );
 };
 
+// ==================================================================================
 // 2. DASHBOARD VIEW
+// ==================================================================================
 const DashboardView = ({ onNavigate }) => {
   const [stats, setStats] = useState({ clients: 0, assets: 0, critical: 0 });
   const [loading, setLoading] = useState(true);
@@ -117,15 +133,16 @@ const DashboardView = ({ onNavigate }) => {
 
   useEffect(() => {
     async function loadData() {
-        if (!supabase) return; // Protección contra null
-        
-        const { count: clientsCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
-        const { count: assetsCount } = await supabase.from('assets').select('*', { count: 'exact', head: true });
-        const { count: criticalCount } = await supabase.from('assets').select('*', { count: 'exact', head: true }).eq('status', 'vencido');
-        const { data: assetsData } = await supabase.from('assets').select('*, clients(name)').order('created_at', { ascending: false }).limit(5);
-        
-        setStats({ clients: clientsCount || 0, assets: assetsCount || 0, critical: criticalCount || 0 });
-        setRecent(assetsData || []);
+        if (!supabase) return;
+        try {
+            const { count: clientsCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
+            const { count: assetsCount } = await supabase.from('assets').select('*', { count: 'exact', head: true });
+            const { count: criticalCount } = await supabase.from('assets').select('*', { count: 'exact', head: true }).eq('status', 'vencido');
+            const { data: assetsData } = await supabase.from('assets').select('*, clients(name)').order('created_at', { ascending: false }).limit(5);
+            
+            setStats({ clients: clientsCount || 0, assets: assetsCount || 0, critical: criticalCount || 0 });
+            setRecent(assetsData || []);
+        } catch(e) { console.error(e) }
         setLoading(false);
     }
     loadData();
@@ -140,7 +157,7 @@ const DashboardView = ({ onNavigate }) => {
         <div className="bg-white p-6 rounded-xl border shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase flex gap-2"><Building2 size={16}/> Cobertura</p><p className="text-3xl font-bold text-gray-900 mt-2">{stats.clients}</p></div>
       </div>
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-800">Próximos Vencimientos</h3>{loading && <Loader2 className="animate-spin text-blue-500" size={18} />}</div>
+        <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-800">Inventario Reciente</h3>{loading && <Loader2 className="animate-spin text-blue-500" size={18} />}</div>
         <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500 font-medium"><tr><th className="px-6 py-3">Cliente</th><th className="px-6 py-3">Activo</th><th className="px-6 py-3">Estado</th><th className="px-6 py-3 text-right">Acción</th></tr></thead>
           <tbody className="divide-y divide-gray-100">
             {recent.map(asset => (
@@ -151,7 +168,7 @@ const DashboardView = ({ onNavigate }) => {
               <td className="px-6 py-4 text-right text-blue-600 font-bold text-xs">Ver Ficha →</td>
             </tr>
           ))}
-          {recent.length === 0 && !loading && <tr><td colSpan="5" className="p-4 text-center text-gray-400">No hay datos registrados</td></tr>}
+          {!loading && recent.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400">No hay datos. Ve a "Cartera" y crea un cliente.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -159,32 +176,31 @@ const DashboardView = ({ onNavigate }) => {
   );
 };
 
+// ==================================================================================
 // 3. CLIENT PORTFOLIO VIEW
+// ==================================================================================
 const ClientPortfolioView = ({ onNavigate }) => {
   const [clients, setClients] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [newClient, setNewClient] = useState({ name: '', address: '', admin: '' });
 
-  useEffect(() => { 
-    async function load() {
-        if (!supabase) return;
-        const { data } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
-        setClients(data || []);
-        setLoading(false);
-    }
-    load();
-  }, []);
+  const loadClients = async () => {
+    setLoading(true);
+    if (!supabase) return;
+    const { data } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
+    setClients(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadClients(); }, []);
 
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!supabase) return;
     const { error } = await supabase.from('clients').insert([{ ...newClient, image_url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000' }]);
-    if (!error) {
-        setShowModal(false);
-        const { data } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
-        setClients(data);
-    } else { alert(error.message); }
+    if (error) alert(error.message);
+    else { setShowModal(false); loadClients(); }
   };
 
   return (
@@ -219,13 +235,15 @@ const ClientPortfolioView = ({ onNavigate }) => {
   );
 };
 
+// ==================================================================================
 // 4. ASSET DETAIL VIEW
+// ==================================================================================
 const AssetDetailView = ({ onBack }) => {
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    const publicLink = typeof window !== 'undefined' ? `${window.location.origin}/?view=public` : 'https://certify-pro.vercel.app/?view=public';
+    const publicLink = `${window.location.origin}/?view=public`;
     QRCode.toDataURL(publicLink).then(setQrUrl);
   }, []);
 
@@ -283,34 +301,31 @@ const InspectorDemo = ({ onExit }) => (
   </div>
 );
 
-// 6. PUBLIC QR VIEW (CON PESTAÑAS Y BITÁCORA)
+// 6. PUBLIC QR VIEW (CON PESTAÑAS)
 const PublicQRDemo = ({ onExit }) => {
   const [activeTab, setActiveTab] = useState('certificate');
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    // Genera un QR que apunta a la URL actual
-    const publicLink = typeof window !== 'undefined' ? window.location.href : 'https://certifypro.vercel.app';
-    QRCode.toDataURL(publicLink).then(setQrUrl);
+    QRCode.toDataURL(window.location.href).then(setQrUrl);
   }, []);
 
   const generatePDF = () => {
     const doc = new jsPDF();
     doc.setLineWidth(1); doc.setDrawColor(34, 197, 94); doc.rect(10, 10, 190, 277);
     doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(30, 58, 138); 
-    doc.text("CERTIFICADO DE CONFORMIDAD", 105, 40, null, null, "center");
-    doc.setFillColor(240); doc.rect(20, 155, 80, 60, 'FD'); doc.rect(110, 155, 80, 60, 'FD');
-    doc.setFontSize(10); doc.setTextColor(150); doc.text("FOTO 1: CABINA", 60, 185, null, null, "center");
-    doc.text("FOTO 2: MÁQUINAS", 150, 185, null, null, "center");
+    doc.text("CERTIFICADO DE MANTENCIÓN", 105, 40, null, null, "center");
+    doc.setTextColor(0); doc.setFontSize(12);
+    doc.text("Equipo: Ascensor Pasajeros Torre A", 20, 80);
     if(qrUrl) doc.addImage(qrUrl, 'PNG', 160, 230, 30, 30);
     doc.save("Certificado_Oficial_Ascensor.pdf");
   };
 
   const bitacora = [
-    { fecha: "15 Nov 2024", evento: "Certificación Anual", tecnico: "Jaime Soto", resultado: "Aprobado" },
-    { fecha: "10 Oct 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", resultado: "Ok" },
-    { fecha: "12 Sep 2024", evento: "Cambio de Rodamientos", tecnico: "Carlos R.", resultado: "Corregido" },
-    { fecha: "10 Ago 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", resultado: "Ok" },
+    { fecha: "15 Nov 2024", evento: "Certificación Anual", tecnico: "Jaime Soto", s: "Aprobado" },
+    { fecha: "10 Oct 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", s: "Ok" },
+    { fecha: "12 Sep 2024", evento: "Cambio de Rodamientos", tecnico: "Carlos R.", s: "Corregido" },
+    { fecha: "10 Ago 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", s: "Ok" },
   ];
 
   return (
@@ -319,17 +334,17 @@ const PublicQRDemo = ({ onExit }) => {
       <div className="bg-white max-w-md w-full rounded-2xl shadow-2xl overflow-hidden relative z-10 border border-gray-100 flex flex-col max-h-[90vh]">
         <div className="bg-green-600 text-white p-6 text-center shrink-0">
           <div className="bg-white/20 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 backdrop-blur-sm"><CheckCircle2 size={24} className="text-white" /></div>
-          <h1 className="text-xl font-bold tracking-tight">EQUIPO CERTIFICADO</h1>
-          <p className="text-green-100 text-xs font-medium uppercase tracking-wider">Apto para uso público</p>
+          <h1 className="text-xl font-bold tracking-tight">EQUIPO VIGENTE</h1>
+          <p className="text-green-100 text-xs font-medium uppercase tracking-wider">Operativo y Seguro</p>
         </div>
         
         {/* PESTAÑAS (TABS) */}
         <div className="flex border-b border-gray-100 bg-gray-50/50">
           <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
-            <FileText size={18} /> Certificado
+            <FileText size={16} /> Certificado
           </button>
           <button onClick={() => setActiveTab('bitacora')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'bitacora' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
-            <History size={18} /> Bitácora
+            <History size={16} /> Bitácora
           </button>
         </div>
 
@@ -348,14 +363,7 @@ const PublicQRDemo = ({ onExit }) => {
           {activeTab === 'bitacora' && (
             <div className="divide-y divide-gray-100 animate-in fade-in slide-in-from-bottom-2 duration-300">
               {bitacora.map((log, i) => (
-                <div key={i} className="p-4 hover:bg-gray-50 transition-colors flex items-start gap-3">
-                  <div className="bg-gray-100 p-2 rounded-lg text-gray-500 mt-1"><Calendar size={16} /></div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start"><h4 className="text-sm font-bold text-gray-900">{log.evento}</h4><span className="text-xs text-gray-400 font-medium">{log.fecha}</span></div>
-                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><User size={10} /> {log.tecnico}</p>
-                    <span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${['Aprobado', 'Ok'].includes(log.resultado) ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700'}`}>{log.resultado}</span>
-                  </div>
-                </div>
+                <div key={i} className="p-4 hover:bg-gray-50 transition-colors flex items-start gap-3"><div className="bg-gray-100 p-2 rounded-lg text-gray-500 mt-1"><Calendar size={16} /></div><div className="flex-1"><div className="flex justify-between items-start"><h4 className="text-sm font-bold text-gray-900">{log.evento}</h4><span className="text-xs text-gray-400 font-medium">{log.fecha}</span></div><p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><User size={10} /> {log.tecnico}</p><span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${['Aprobado', 'Ok'].includes(log.s) ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700'}`}>{log.s}</span></div></div>
               ))}
             </div>
           )}
@@ -368,25 +376,41 @@ const PublicQRDemo = ({ onExit }) => {
 };
 
 // ==================================================================================
-// 🧠 COMPONENTE PRINCIPAL (RUTAS)
+// 🧠 COMPONENTE PRINCIPAL
 // ==================================================================================
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Deep Linking
     const params = new URLSearchParams(window.location.search);
     if (params.get('view') === 'public') {
       setIsLoggedIn(true);
       setCurrentView('public');
+      setLoading(false);
+      return;
     }
-    
-    if(supabase && supabase.auth) {
-        supabase.auth.onAuthStateChange((event, session) => {
+
+    // Listener Auth
+    if (supabase) {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setIsLoggedIn(!!session);
+            setLoading(false);
+        });
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             setIsLoggedIn(!!session);
         });
+
+        return () => subscription.unsubscribe();
+    } else {
+        setLoading(false);
     }
   }, []);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-blue-600" size={40} /></div>;
 
   if (!isLoggedIn && currentView !== 'public') return <LoginView onLogin={() => setIsLoggedIn(true)} />;
 
@@ -408,8 +432,8 @@ export default function App() {
             ))}
           </nav>
           <div className="p-4 border-t border-slate-800">
-            <div className="bg-slate-800 rounded-xl p-4 mb-3"><p className="text-xs text-slate-400 mb-1">Saldo</p><p className="text-xl font-bold">14 Créditos</p></div>
-            <button onClick={() => { setIsLoggedIn(false); if(supabase && supabase.auth) supabase.auth.signOut(); }} className="flex gap-2 text-slate-400 hover:text-white text-sm px-2"><LogOut size={16}/> Salir</button>
+            <div className="bg-slate-800 rounded-xl p-4 mb-3"><p className="text-xs text-slate-400 mb-1">Usuario</p><p className="text-xs font-bold truncate">admin@certifypro.cl</p></div>
+            <button onClick={() => { if(supabase) supabase.auth.signOut(); }} className="flex gap-2 text-slate-400 hover:text-white text-sm px-2 w-full transition-colors"><LogOut size={16}/> Salir</button>
           </div>
         </aside>
 
