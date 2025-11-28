@@ -13,12 +13,12 @@ import QRCode from 'qrcode';
 import { createClient } from '@supabase/supabase-js';
 
 // ==================================================================================
-// 🔧 CONFIGURACIÓN
+// 🔧 CONFIGURACIÓN DE MODO
 // ==================================================================================
-const USE_MOCK_DATA = false; // FALSE = Producción Real (Usa .env.local)
- 
-// --- INICIALIZACIÓN BLINDADA DE SUPABASE ---
-let supabase = null;
+const USE_MOCK_DATA = false; // FALSE = Producción Real
+
+// --- CLIENTE SUPABASE ---
+let supabase;
 
 try {
   if (!USE_MOCK_DATA) {
@@ -27,32 +27,22 @@ try {
 
     if (supabaseUrl && supabaseKey) {
       supabase = createClient(supabaseUrl, supabaseKey);
-      console.log("✅ Conexión a Supabase inicializada correctamente.");
     } else {
-      console.error("🔴 ERROR: Faltan variables VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY en .env.local");
+      console.error("Faltan variables de entorno en Vercel o .env.local");
     }
   } else {
-    // MOCK DE RESPALDO (Solo si activas USE_MOCK_DATA = true)
+    // Mock Fallback
+    console.warn("Modo Mock Activado");
     const mockDB = { clients: [], assets: [] };
     supabase = {
-        auth: { 
-            signInWithPassword: async () => ({ data: { user: { email: 'demo@certifypro.cl' } }, error: null }),
-            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-            getSession: async () => ({ data: { session: null } }),
-            signOut: async () => {}
-        },
-        from: () => ({ 
-            select: () => ({ order: async () => ({ data: [], error: null }), eq: async () => ({ count: 0 }) }),
-            insert: async () => ({ error: null })
-        })
+        from: () => ({ select: () => ({ order: async () => ({ data: [], error: null }), eq: async () => ({ count: 0 }) }), insert: async () => ({ error: null }) }),
+        auth: { signInWithPassword: async () => ({ data: { user: { email: 'demo' } } }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }) }
     };
   }
-} catch (error) {
-  console.error("🔴 Error Crítico al iniciar Supabase:", error);
-}
+} catch (err) { console.error(err); }
 
 // ==================================================================================
-// 1. VISTA LOGIN (CON VALIDACIÓN DE CONEXIÓN)
+// 1. LOGIN VIEW
 // ==================================================================================
 const LoginView = ({ onLogin }) => {
   const images = [
@@ -70,27 +60,13 @@ const LoginView = ({ onLogin }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-
-    // 🛡️ VALIDACIÓN DE SEGURIDAD ANTES DE LLAMAR A AUTH
-    if (!supabase) {
-        alert (VITE_SUPABASE_URL);
-        alert("⚠️ ERROR DE CONEXIÓN:\n\nNo se detectaron las llaves de Supabase.\n\n1. Revisa tu archivo .env.local\n2. Reinicia la terminal (Ctrl+C -> npm run dev)");
-        setLoading(false);
-        return;
-    }
-
+    
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      
+      if (USE_MOCK_DATA) { onLogin(); return; }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      
-      // Si el login es exitoso, el listener global en App() actualizará la vista
-      console.log("Usuario logueado:", data.user);
-
     } catch (error) {
-      console.error("Fallo Login:", error);
-      alert("Error de Acceso: " + error.message);
-    } finally {
+      alert("Error: " + error.message);
       setLoading(false);
     }
   };
@@ -112,9 +88,9 @@ const LoginView = ({ onLogin }) => {
         <div className="max-w-md w-full space-y-8">
           <div className="text-center lg:text-left"><h2 className="text-3xl font-bold text-gray-900">Bienvenido</h2><p className="text-gray-500">Acceso corporativo seguro.</p></div>
           <form className="space-y-6" onSubmit={handleLogin}>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••" required /></div>
-            <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 flex justify-center items-center gap-2 disabled:opacity-50">
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border rounded-xl" required /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3 border rounded-xl" required /></div>
+            <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 flex justify-center items-center gap-2">
                 {loading ? <Loader2 className="animate-spin"/> : <>Ingresar <ArrowRight size={18}/></>}
             </button>
           </form>
@@ -124,9 +100,7 @@ const LoginView = ({ onLogin }) => {
   );
 };
 
-// ==================================================================================
 // 2. DASHBOARD VIEW
-// ==================================================================================
 const DashboardView = ({ onNavigate }) => {
   const [stats, setStats] = useState({ clients: 0, assets: 0, critical: 0 });
   const [loading, setLoading] = useState(true);
@@ -135,15 +109,13 @@ const DashboardView = ({ onNavigate }) => {
   useEffect(() => {
     async function loadData() {
         if (!supabase) return;
-        try {
-            const { count: clientsCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
-            const { count: assetsCount } = await supabase.from('assets').select('*', { count: 'exact', head: true });
-            const { count: criticalCount } = await supabase.from('assets').select('*', { count: 'exact', head: true }).eq('status', 'vencido');
-            const { data: assetsData } = await supabase.from('assets').select('*, clients(name)').order('created_at', { ascending: false }).limit(5);
-            
-            setStats({ clients: clientsCount || 0, assets: assetsCount || 0, critical: criticalCount || 0 });
-            setRecent(assetsData || []);
-        } catch(e) { console.error(e) }
+        const { count: clientsCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
+        const { count: assetsCount } = await supabase.from('assets').select('*', { count: 'exact', head: true });
+        const { count: criticalCount } = await supabase.from('assets').select('*', { count: 'exact', head: true }).eq('status', 'vencido');
+        const { data: assetsData } = await supabase.from('assets').select('*, clients(name)').order('created_at', { ascending: false }).limit(5);
+        
+        setStats({ clients: clientsCount || 0, assets: assetsCount || 0, critical: criticalCount || 0 });
+        setRecent(assetsData || []);
         setLoading(false);
     }
     loadData();
@@ -158,10 +130,9 @@ const DashboardView = ({ onNavigate }) => {
         <div className="bg-white p-6 rounded-xl border shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase flex gap-2"><Building2 size={16}/> Cobertura</p><p className="text-3xl font-bold text-gray-900 mt-2">{stats.clients}</p></div>
       </div>
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-800">Inventario Reciente</h3>{loading && <Loader2 className="animate-spin text-blue-500" size={18} />}</div>
+        <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-800">Próximos Vencimientos</h3>{loading && <Loader2 className="animate-spin text-blue-500" size={18} />}</div>
         <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500 font-medium"><tr><th className="px-6 py-3">Cliente</th><th className="px-6 py-3">Activo</th><th className="px-6 py-3">Estado</th><th className="px-6 py-3 text-right">Acción</th></tr></thead>
-          <tbody className="divide-y divide-gray-100">
-            {recent.map(asset => (
+          <tbody className="divide-y divide-gray-100">{recent.map(asset => (
             <tr key={asset.id} className="hover:bg-blue-50/50 cursor-pointer" onClick={() => onNavigate('detail')}>
               <td className="px-6 py-4 font-semibold text-gray-900">{asset.clients?.name}</td>
               <td className="px-6 py-4 text-gray-600">{asset.name}</td>
@@ -169,7 +140,7 @@ const DashboardView = ({ onNavigate }) => {
               <td className="px-6 py-4 text-right text-blue-600 font-bold text-xs">Ver Ficha →</td>
             </tr>
           ))}
-          {!loading && recent.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400">No hay datos. Ve a "Cartera" y crea un cliente.</td></tr>}
+          {!loading && recent.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400">No hay datos recientes.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -178,7 +149,7 @@ const DashboardView = ({ onNavigate }) => {
 };
 
 // ==================================================================================
-// 3. CLIENT PORTFOLIO VIEW
+// 3. CLIENT PORTFOLIO VIEW (CORREGIDA: FLEXBOX Y FALLBACKS)
 // ==================================================================================
 const ClientPortfolioView = ({ onNavigate }) => {
   const [clients, setClients] = useState([]);
@@ -199,10 +170,26 @@ const ClientPortfolioView = ({ onNavigate }) => {
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!supabase) return;
-    const { error } = await supabase.from('clients').insert([{ ...newClient, image_url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000' }]);
-    if (error) alert(error.message);
-    else { setShowModal(false); loadClients(); }
+    
+    // CORRECCIÓN DE MAPEO Y URL POR DEFECTO
+    const { error } = await supabase.from('clients').insert([{ 
+        name: newClient.name, 
+        address: newClient.address, 
+        admin_name: newClient.admin, // Mapeo correcto
+        image_url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop' 
+    }]);
+    
+    if (error) {
+        alert("Error: " + error.message);
+    } else {
+        setShowModal(false);
+        setNewClient({ name: '', address: '', admin: '' });
+        loadClients();
+    }
   };
+
+  // Imagen de respaldo si falla la carga o viene null
+  const fallbackImage = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop";
 
   return (
     <div className="h-full flex flex-col relative">
@@ -212,9 +199,33 @@ const ClientPortfolioView = ({ onNavigate }) => {
         <div className="flex-1 overflow-y-auto p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {loading && <div className="col-span-full flex justify-center py-10"><Loader2 className="animate-spin" /></div>}
           {clients.map(c => (
-            <div key={c.id} className="bg-white rounded-2xl border shadow-sm overflow-hidden group hover:shadow-xl transition-all">
-              <div className="h-40 relative"><img src={c.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" /><div className="absolute bottom-3 left-4 text-white"><h3 className="font-bold text-lg">{c.name}</h3><p className="text-xs text-gray-300 flex gap-1"><MapPin size={12}/> {c.address}</p></div></div>
-              <div className="p-4 flex justify-between items-center"><div><p className="text-[10px] font-bold text-gray-400 uppercase">ADMINISTRADOR</p><p className="text-sm font-bold">{c.admin_name || c.admin}</p></div><button onClick={() => onNavigate('dashboard')} className="p-2 bg-gray-50 rounded-full hover:bg-blue-600 hover:text-white"><ArrowRight size={18}/></button></div>
+            // CORRECCIÓN FLEX: 'flex flex-col h-full' asegura altura uniforme
+            <div key={c.id} className="bg-white rounded-2xl border shadow-sm overflow-hidden group hover:shadow-xl transition-all flex flex-col h-full">
+              {/* IMAGEN CON FALLBACK */}
+              <div className="h-40 relative shrink-0 bg-gray-200">
+                <img 
+                    src={c.image_url || fallbackImage} 
+                    className="w-full h-full object-cover" 
+                    alt="Edificio"
+                    onError={(e) => { e.target.src = fallbackImage; }} // Si falla la URL, carga fallback
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                <div className="absolute bottom-3 left-4 text-white pr-4">
+                  <h3 className="font-bold text-lg leading-tight mb-1">{c.name}</h3>
+                  <p className="text-xs text-gray-300 flex gap-1 truncate"><MapPin size={12}/> {c.address}</p>
+                </div>
+              </div>
+              
+              {/* CUERPO TARJETA CON FLEX GROW */}
+              <div className="p-4 flex justify-between items-center mt-auto bg-white">
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">ADMINISTRADOR</p>
+                  <p className="text-sm font-bold text-gray-800 truncate max-w-[150px]">
+                    {c.admin_name || "Sin Asignar"}
+                  </p>
+                </div>
+                <button onClick={() => onNavigate('dashboard')} className="p-2 bg-gray-50 rounded-full hover:bg-blue-600 hover:text-white border border-gray-100 shadow-sm transition-colors"><ArrowRight size={18}/></button>
+              </div>
             </div>
           ))}
         </div>
@@ -236,9 +247,7 @@ const ClientPortfolioView = ({ onNavigate }) => {
   );
 };
 
-// ==================================================================================
 // 4. ASSET DETAIL VIEW
-// ==================================================================================
 const AssetDetailView = ({ onBack }) => {
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
@@ -302,22 +311,24 @@ const InspectorDemo = ({ onExit }) => (
   </div>
 );
 
-// 6. PUBLIC QR VIEW (CON PESTAÑAS)
+// 6. PUBLIC QR VIEW
 const PublicQRDemo = ({ onExit }) => {
   const [activeTab, setActiveTab] = useState('certificate');
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    QRCode.toDataURL(window.location.href).then(setQrUrl);
+    const publicLink = typeof window !== 'undefined' ? window.location.href : 'https://certifypro.vercel.app';
+    QRCode.toDataURL(publicLink).then(setQrUrl);
   }, []);
 
   const generatePDF = () => {
     const doc = new jsPDF();
     doc.setLineWidth(1); doc.setDrawColor(34, 197, 94); doc.rect(10, 10, 190, 277);
     doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(30, 58, 138); 
-    doc.text("CERTIFICADO DE MANTENCIÓN", 105, 40, null, null, "center");
-    doc.setTextColor(0); doc.setFontSize(12);
-    doc.text("Equipo: Ascensor Pasajeros Torre A", 20, 80);
+    doc.text("CERTIFICADO DE CONFORMIDAD", 105, 40, null, null, "center");
+    doc.setFillColor(240); doc.rect(20, 155, 80, 60, 'FD'); doc.rect(110, 155, 80, 60, 'FD');
+    doc.setFontSize(10); doc.setTextColor(150); doc.text("FOTO 1: CABINA", 60, 185, null, null, "center");
+    doc.text("FOTO 2: MÁQUINAS", 150, 185, null, null, "center");
     if(qrUrl) doc.addImage(qrUrl, 'PNG', 160, 230, 30, 30);
     doc.save("Certificado_Oficial_Ascensor.pdf");
   };
@@ -338,8 +349,6 @@ const PublicQRDemo = ({ onExit }) => {
           <h1 className="text-xl font-bold tracking-tight">EQUIPO VIGENTE</h1>
           <p className="text-green-100 text-xs font-medium uppercase tracking-wider">Operativo y Seguro</p>
         </div>
-        
-        {/* PESTAÑAS (TABS) */}
         <div className="flex border-b border-gray-100 bg-gray-50/50">
           <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
             <FileText size={16} /> Certificado
@@ -348,8 +357,6 @@ const PublicQRDemo = ({ onExit }) => {
             <History size={16} /> Bitácora
           </button>
         </div>
-
-        {/* CONTENIDO TABS */}
         <div className="flex-1 overflow-y-auto p-0 bg-white">
           {activeTab === 'certificate' && (
             <div className="p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -382,36 +389,20 @@ const PublicQRDemo = ({ onExit }) => {
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Deep Linking
     const params = new URLSearchParams(window.location.search);
     if (params.get('view') === 'public') {
       setIsLoggedIn(true);
       setCurrentView('public');
-      setLoading(false);
-      return;
     }
-
-    // Listener Auth
-    if (supabase) {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setIsLoggedIn(!!session);
-            setLoading(false);
-        });
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    
+    if(supabase && supabase.auth) {
+        supabase.auth.onAuthStateChange((event, session) => {
             setIsLoggedIn(!!session);
         });
-
-        return () => subscription.unsubscribe();
-    } else {
-        setLoading(false);
     }
   }, []);
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-blue-600" size={40} /></div>;
 
   if (!isLoggedIn && currentView !== 'public') return <LoginView onLogin={() => setIsLoggedIn(true)} />;
 
@@ -434,7 +425,7 @@ export default function App() {
           </nav>
           <div className="p-4 border-t border-slate-800">
             <div className="bg-slate-800 rounded-xl p-4 mb-3"><p className="text-xs text-slate-400 mb-1">Usuario</p><p className="text-xs font-bold truncate">admin@certifypro.cl</p></div>
-            <button onClick={() => { if(supabase) supabase.auth.signOut(); }} className="flex gap-2 text-slate-400 hover:text-white text-sm px-2 w-full transition-colors"><LogOut size={16}/> Salir</button>
+            <button onClick={() => { setIsLoggedIn(false); if(supabase && supabase.auth) supabase.auth.signOut(); }} className="flex gap-2 text-slate-400 hover:text-white text-sm px-2"><LogOut size={16}/> Salir</button>
           </div>
         </aside>
 
