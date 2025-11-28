@@ -7,7 +7,7 @@ import {
   ShieldCheck, ExternalLink, Camera, UploadCloud, Menu, FileText, Calendar, User
 } from 'lucide-react';
 
-// --- LIBRERÍAS REALES ---
+// --- LIBRERÍAS REALES (PRODUCCIÓN) ---
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import { createClient } from '@supabase/supabase-js';
@@ -149,13 +149,20 @@ const DashboardView = ({ onNavigate }) => {
 };
 
 // ==================================================================================
-// 3. CLIENT PORTFOLIO VIEW (CORREGIDA: FLEXBOX Y FALLBACKS)
+// 3. CLIENT PORTFOLIO VIEW (CORREGIDA Y ROBUSTA)
 // ==================================================================================
 const ClientPortfolioView = ({ onNavigate }) => {
   const [clients, setClients] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [newClient, setNewClient] = useState({ name: '', address: '', admin: '' });
+
+  // IMAGEN POR DEFECTO (Para que nunca se vea blanco si falta la foto)
+  const FALLBACK_IMAGES = [
+    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1554469384-e58fac16e23a?q=80&w=1000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1460472178825-e5240623afd5?q=80&w=1000&auto=format&fit=crop"
+  ];
 
   const loadClients = async () => {
     setLoading(true);
@@ -171,12 +178,15 @@ const ClientPortfolioView = ({ onNavigate }) => {
     e.preventDefault();
     if (!supabase) return;
     
-    // CORRECCIÓN DE MAPEO Y URL POR DEFECTO
+    // Elegimos imagen al azar
+    const randomImage = FALLBACK_IMAGES[Math.floor(Math.random() * FALLBACK_IMAGES.length)];
+
     const { error } = await supabase.from('clients').insert([{ 
         name: newClient.name, 
         address: newClient.address, 
-        admin_name: newClient.admin, // Mapeo correcto
-        image_url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop' 
+        admin_name: newClient.admin, 
+        image_url: randomImage, // Siempre guardamos una imagen
+        status: 'active'
     }]);
     
     if (error) {
@@ -188,50 +198,58 @@ const ClientPortfolioView = ({ onNavigate }) => {
     }
   };
 
-  // Imagen de respaldo si falla la carga o viene null
-  const fallbackImage = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop";
-
   return (
     <div className="h-full flex flex-col relative">
       <div className="absolute inset-0 z-0 opacity-10 pointer-events-none"><img src="https://images.unsplash.com/photo-1506146332389-18140dc7b2fb?q=80&w=2000" className="w-full h-full object-cover" /></div>
       <div className="relative z-10 flex flex-col h-full">
         <div className="bg-white/90 backdrop-blur px-8 py-5 border-b flex justify-between items-center"><h1 className="text-2xl font-bold">Cartera de Clientes</h1><button onClick={() => setShowModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex gap-2 shadow-lg"><Plus size={20}/> Nuevo</button></div>
-        <div className="flex-1 overflow-y-auto p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <div className="flex-1 overflow-y-auto p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
           {loading && <div className="col-span-full flex justify-center py-10"><Loader2 className="animate-spin" /></div>}
+          
+          {/* Tarjeta Agregar */}
+          <button onClick={() => setShowModal(true)} className="border-2 border-dashed border-gray-300 rounded-2xl h-full min-h-[300px] flex flex-col items-center justify-center text-gray-400 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50/50 transition-all bg-white/50 backdrop-blur-sm group">
+             <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4 group-hover:bg-blue-100 shadow-sm"><Plus size={32} /></div>
+             <span className="font-bold text-lg">Registrar Nuevo Edificio</span>
+          </button>
+
+          {/* Lista Clientes */}
           {clients.map(c => (
-            // CORRECCIÓN FLEX: 'flex flex-col h-full' asegura altura uniforme
-            <div key={c.id} className="bg-white rounded-2xl border shadow-sm overflow-hidden group hover:shadow-xl transition-all flex flex-col h-full">
-              {/* IMAGEN CON FALLBACK */}
-              <div className="h-40 relative shrink-0 bg-gray-200">
+            <div key={c.id} className="bg-white rounded-2xl border shadow-sm overflow-hidden group hover:shadow-xl transition-all flex flex-col h-full min-h-[300px]">
+              <div className="h-40 relative shrink-0 bg-gray-800">
                 <img 
-                    src={c.image_url || fallbackImage} 
-                    className="w-full h-full object-cover" 
-                    alt="Edificio"
-                    onError={(e) => { e.target.src = fallbackImage; }} // Si falla la URL, carga fallback
+                    src={c.image_url || FALLBACK_IMAGES[0]} 
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90" 
+                    onError={(e) => { e.target.src = FALLBACK_IMAGES[0]; }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
                 <div className="absolute bottom-3 left-4 text-white pr-4">
-                  <h3 className="font-bold text-lg leading-tight mb-1">{c.name}</h3>
-                  <p className="text-xs text-gray-300 flex gap-1 truncate"><MapPin size={12}/> {c.address}</p>
+                  <h3 className="font-bold text-xl leading-tight mb-1 truncate">{c.name}</h3>
+                  <p className="text-xs text-gray-300 flex gap-1 truncate"><MapPin size={12}/> {c.address || "Sin dirección"}</p>
                 </div>
               </div>
               
-              {/* CUERPO TARJETA CON FLEX GROW */}
-              <div className="p-4 flex justify-between items-center mt-auto bg-white">
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase">ADMINISTRADOR</p>
-                  <p className="text-sm font-bold text-gray-800 truncate max-w-[150px]">
-                    {c.admin_name || "Sin Asignar"}
-                  </p>
+              <div className="p-5 flex-1 flex flex-col justify-between bg-white">
+                <div className="flex flex-wrap gap-2 mb-4">
+                   <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-md font-bold border border-blue-100 flex items-center gap-1"><Building2 size={12} /> Ver Equipos</span>
                 </div>
-                <button onClick={() => onNavigate('dashboard')} className="p-2 bg-gray-50 rounded-full hover:bg-blue-600 hover:text-white border border-gray-100 shadow-sm transition-colors"><ArrowRight size={18}/></button>
+                <div className="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
+                  <div className="overflow-hidden mr-2">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase">ADMINISTRADOR</p>
+                    <p className="text-sm font-bold text-gray-800 truncate max-w-[150px]">
+                        {c.admin_name || c.admin || "Sin Asignar"}
+                    </p>
+                  </div>
+                  <button onClick={() => onNavigate('dashboard')} className="p-2 bg-gray-50 rounded-full hover:bg-blue-600 hover:text-white border shadow-sm transition-colors"><ArrowRight size={18}/></button>
+                </div>
               </div>
             </div>
           ))}
         </div>
       </div>
+
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in">
             <div className="flex justify-between mb-4"><h3 className="font-bold text-lg">Nuevo Edificio</h3><button onClick={() => setShowModal(false)}><X className="text-gray-400 hover:text-red-500" /></button></div>
             <form onSubmit={handleCreate} className="space-y-4">
@@ -253,7 +271,7 @@ const AssetDetailView = ({ onBack }) => {
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    const publicLink = `${window.location.origin}/?view=public`;
+    const publicLink = typeof window !== 'undefined' ? `${window.location.origin}/?view=public` : 'https://certify-pro.vercel.app/?view=public';
     QRCode.toDataURL(publicLink).then(setQrUrl);
   }, []);
 
@@ -311,7 +329,7 @@ const InspectorDemo = ({ onExit }) => (
   </div>
 );
 
-// 6. PUBLIC QR VIEW
+// 6. PUBLIC QR VIEW (CON TABS Y BITÁCORA)
 const PublicQRDemo = ({ onExit }) => {
   const [activeTab, setActiveTab] = useState('certificate');
   const [qrUrl, setQrUrl] = useState('');
@@ -349,6 +367,8 @@ const PublicQRDemo = ({ onExit }) => {
           <h1 className="text-xl font-bold tracking-tight">EQUIPO VIGENTE</h1>
           <p className="text-green-100 text-xs font-medium uppercase tracking-wider">Operativo y Seguro</p>
         </div>
+        
+        {/* PESTAÑAS */}
         <div className="flex border-b border-gray-100 bg-gray-50/50">
           <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
             <FileText size={16} /> Certificado
@@ -357,6 +377,8 @@ const PublicQRDemo = ({ onExit }) => {
             <History size={16} /> Bitácora
           </button>
         </div>
+
+        {/* CONTENIDO TABS */}
         <div className="flex-1 overflow-y-auto p-0 bg-white">
           {activeTab === 'certificate' && (
             <div className="p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -384,7 +406,7 @@ const PublicQRDemo = ({ onExit }) => {
 };
 
 // ==================================================================================
-// 🧠 COMPONENTE PRINCIPAL
+// 🧠 COMPONENTE PRINCIPAL (RUTAS)
 // ==================================================================================
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -424,7 +446,7 @@ export default function App() {
             ))}
           </nav>
           <div className="p-4 border-t border-slate-800">
-            <div className="bg-slate-800 rounded-xl p-4 mb-3"><p className="text-xs text-slate-400 mb-1">Usuario</p><p className="text-xs font-bold truncate">admin@certifypro.cl</p></div>
+            <div className="bg-slate-800 rounded-xl p-4 mb-3"><p className="text-xs text-slate-400 mb-1">Saldo</p><p className="text-xl font-bold">14 Créditos</p></div>
             <button onClick={() => { setIsLoggedIn(false); if(supabase && supabase.auth) supabase.auth.signOut(); }} className="flex gap-2 text-slate-400 hover:text-white text-sm px-2"><LogOut size={16}/> Salir</button>
           </div>
         </aside>
