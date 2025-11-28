@@ -15,9 +15,9 @@ import {
 // 2. DESCOMENTA los imports reales abajo y BORRA los simuladores Mock.
 
 // --- IMPORTS REALES (Descomentar en Local) ---
-// import jsPDF from 'jspdf';
-// import QRCode from 'qrcode';
-// import { createClient } from '@supabase/supabase-js';
+import jsPDF from 'jspdf';
+import QRCode from 'qrcode';
+import { createClient } from '@supabase/supabase-js';
 
 // --- SIMULADORES (Para que funcione aquí sin errores) ---
 const MockJsPDF = class {
@@ -37,7 +37,7 @@ const QRCode = (typeof window !== 'undefined' && window.QRCode) || MockQRCode;
 // ==================================================================================
 // 🔧 CONFIGURACIÓN DE DATOS
 // ==================================================================================
-const USE_MOCK_DATA = true; // true = Demo Visual
+const USE_MOCK_DATA = false; // true = Demo Visual
 
 // --- CLIENTE SUPABASE (Simulado) ---
 let supabase;
