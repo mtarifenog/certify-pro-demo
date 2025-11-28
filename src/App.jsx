@@ -73,6 +73,7 @@ const LoginView = ({ onLogin }) => {
 
     // 🛡️ VALIDACIÓN DE SEGURIDAD ANTES DE LLAMAR A AUTH
     if (!supabase) {
+        alert (VITE_SUPABASE_URL);
         alert("⚠️ ERROR DE CONEXIÓN:\n\nNo se detectaron las llaves de Supabase.\n\n1. Revisa tu archivo .env.local\n2. Reinicia la terminal (Ctrl+C -> npm run dev)");
         setLoading(false);
         return;
