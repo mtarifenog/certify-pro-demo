@@ -1,3 +1,4 @@
+const VITE_SUPABASE_URL;
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, FileCheck, Smartphone, QrCode, LogOut, 
