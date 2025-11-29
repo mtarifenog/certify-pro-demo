@@ -7,17 +7,16 @@ import {
   ShieldCheck, ExternalLink, Camera, UploadCloud, Menu, FileText, Calendar, User
 } from 'lucide-react';
 
-// --- LIBRERÍAS REALES (PRODUCCIÓN) ---
+// --- LIBRERÍAS REALES ---
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import { createClient } from '@supabase/supabase-js';
 
 // ==================================================================================
-// 🔧 CONFIGURACIÓN DE MODO
+// 🔧 CONFIGURACIÓN DE CONEXIÓN
 // ==================================================================================
-const USE_MOCK_DATA = false; // FALSE = Producción Real
+const USE_MOCK_DATA = false; // FALSE: MODO PRODUCCIÓN REAL
 
-// --- CLIENTE SUPABASE ---
 let supabase;
 
 try {
@@ -28,18 +27,10 @@ try {
     if (supabaseUrl && supabaseKey) {
       supabase = createClient(supabaseUrl, supabaseKey);
     } else {
-      console.error("Faltan variables de entorno en Vercel o .env.local");
+      console.error("🔴 ERROR: Faltan variables de entorno Supabase");
     }
-  } else {
-    // Mock Fallback
-    console.warn("Modo Mock Activado");
-    const mockDB = { clients: [], assets: [] };
-    supabase = {
-        from: () => ({ select: () => ({ order: async () => ({ data: [], error: null }), eq: async () => ({ count: 0 }) }), insert: async () => ({ error: null }) }),
-        auth: { signInWithPassword: async () => ({ data: { user: { email: 'demo' } } }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }) }
-    };
   }
-} catch (err) { console.error(err); }
+} catch (err) { console.error("Error inicializando Supabase:", err); }
 
 // ==================================================================================
 // 1. LOGIN VIEW
@@ -62,11 +53,13 @@ const LoginView = ({ onLogin }) => {
     setLoading(true);
     
     try {
-      if (USE_MOCK_DATA) { onLogin(); return; }
+      if (!supabase) throw new Error("Error de conexión Supabase.");
+      
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      
     } catch (error) {
-      alert("Error: " + error.message);
+      alert("Error al ingresar: " + error.message);
       setLoading(false);
     }
   };
@@ -139,25 +132,20 @@ const DashboardView = ({ onNavigate }) => {
               <td className="px-6 py-4"><span className={`px-2 py-1 rounded text-xs font-bold flex w-fit gap-1 ${asset.status === 'vencido' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{asset.status === 'vencido' ? <AlertTriangle size={12}/> : <CheckCircle2 size={12}/>} {asset.status}</span></td>
               <td className="px-6 py-4 text-right text-blue-600 font-bold text-xs">Ver Ficha →</td>
             </tr>
-          ))}
-          {!loading && recent.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400">No hay datos recientes.</td></tr>}
-          </tbody>
+          ))}</tbody>
         </table>
       </div>
     </div>
   );
 };
 
-// ==================================================================================
-// 3. CLIENT PORTFOLIO VIEW (CORREGIDA Y ROBUSTA)
-// ==================================================================================
+// 3. CLIENT PORTFOLIO VIEW
 const ClientPortfolioView = ({ onNavigate }) => {
   const [clients, setClients] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [newClient, setNewClient] = useState({ name: '', address: '', admin: '' });
 
-  // IMAGEN POR DEFECTO (Para que nunca se vea blanco si falta la foto)
   const FALLBACK_IMAGES = [
     "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1554469384-e58fac16e23a?q=80&w=1000&auto=format&fit=crop",
@@ -178,19 +166,17 @@ const ClientPortfolioView = ({ onNavigate }) => {
     e.preventDefault();
     if (!supabase) return;
     
-    // Elegimos imagen al azar
     const randomImage = FALLBACK_IMAGES[Math.floor(Math.random() * FALLBACK_IMAGES.length)];
 
     const { error } = await supabase.from('clients').insert([{ 
         name: newClient.name, 
         address: newClient.address, 
-        admin_name: newClient.admin, 
-        image_url: randomImage, // Siempre guardamos una imagen
-        status: 'active'
+        admin_name: newClient.admin, // Mapeo correcto
+        image_url: randomImage 
     }]);
     
     if (error) {
-        alert("Error: " + error.message);
+        alert("Error al guardar: " + error.message);
     } else {
         setShowModal(false);
         setNewClient({ name: '', address: '', admin: '' });
@@ -207,13 +193,11 @@ const ClientPortfolioView = ({ onNavigate }) => {
         <div className="flex-1 overflow-y-auto p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
           {loading && <div className="col-span-full flex justify-center py-10"><Loader2 className="animate-spin" /></div>}
           
-          {/* Tarjeta Agregar */}
           <button onClick={() => setShowModal(true)} className="border-2 border-dashed border-gray-300 rounded-2xl h-full min-h-[300px] flex flex-col items-center justify-center text-gray-400 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50/50 transition-all bg-white/50 backdrop-blur-sm group">
              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4 group-hover:bg-blue-100 shadow-sm"><Plus size={32} /></div>
              <span className="font-bold text-lg">Registrar Nuevo Edificio</span>
           </button>
 
-          {/* Lista Clientes */}
           {clients.map(c => (
             <div key={c.id} className="bg-white rounded-2xl border shadow-sm overflow-hidden group hover:shadow-xl transition-all flex flex-col h-full min-h-[300px]">
               <div className="h-40 relative shrink-0 bg-gray-800">
@@ -236,9 +220,7 @@ const ClientPortfolioView = ({ onNavigate }) => {
                 <div className="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
                   <div className="overflow-hidden mr-2">
                     <p className="text-[10px] font-bold text-gray-400 uppercase">ADMINISTRADOR</p>
-                    <p className="text-sm font-bold text-gray-800 truncate max-w-[150px]">
-                        {c.admin_name || c.admin || "Sin Asignar"}
-                    </p>
+                    <p className="text-sm font-bold text-gray-800 truncate max-w-[150px]">{c.admin_name || c.admin || "Sin Asignar"}</p>
                   </div>
                   <button onClick={() => onNavigate('dashboard')} className="p-2 bg-gray-50 rounded-full hover:bg-blue-600 hover:text-white border shadow-sm transition-colors"><ArrowRight size={18}/></button>
                 </div>
@@ -247,7 +229,6 @@ const ClientPortfolioView = ({ onNavigate }) => {
           ))}
         </div>
       </div>
-
       {showModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in">
@@ -329,14 +310,13 @@ const InspectorDemo = ({ onExit }) => (
   </div>
 );
 
-// 6. PUBLIC QR VIEW (CON TABS Y BITÁCORA)
+// 6. PUBLIC QR VIEW
 const PublicQRDemo = ({ onExit }) => {
   const [activeTab, setActiveTab] = useState('certificate');
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    const publicLink = typeof window !== 'undefined' ? window.location.href : 'https://certifypro.vercel.app';
-    QRCode.toDataURL(publicLink).then(setQrUrl);
+    QRCode.toDataURL(window.location.href).then(setQrUrl);
   }, []);
 
   const generatePDF = () => {
@@ -367,8 +347,6 @@ const PublicQRDemo = ({ onExit }) => {
           <h1 className="text-xl font-bold tracking-tight">EQUIPO VIGENTE</h1>
           <p className="text-green-100 text-xs font-medium uppercase tracking-wider">Operativo y Seguro</p>
         </div>
-        
-        {/* PESTAÑAS */}
         <div className="flex border-b border-gray-100 bg-gray-50/50">
           <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
             <FileText size={16} /> Certificado
@@ -377,8 +355,6 @@ const PublicQRDemo = ({ onExit }) => {
             <History size={16} /> Bitácora
           </button>
         </div>
-
-        {/* CONTENIDO TABS */}
         <div className="flex-1 overflow-y-auto p-0 bg-white">
           {activeTab === 'certificate' && (
             <div className="p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -393,7 +369,14 @@ const PublicQRDemo = ({ onExit }) => {
           {activeTab === 'bitacora' && (
             <div className="divide-y divide-gray-100 animate-in fade-in slide-in-from-bottom-2 duration-300">
               {bitacora.map((log, i) => (
-                <div key={i} className="p-4 hover:bg-gray-50 transition-colors flex items-start gap-3"><div className="bg-gray-100 p-2 rounded-lg text-gray-500 mt-1"><Calendar size={16} /></div><div className="flex-1"><div className="flex justify-between items-start"><h4 className="text-sm font-bold text-gray-900">{log.evento}</h4><span className="text-xs text-gray-400 font-medium">{log.fecha}</span></div><p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><User size={10} /> {log.tecnico}</p><span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${['Aprobado', 'Ok'].includes(log.s) ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700'}`}>{log.s}</span></div></div>
+                <div key={i} className="p-4 hover:bg-gray-50 transition-colors flex items-start gap-3">
+                  <div className="bg-gray-100 p-2 rounded-lg text-gray-500 mt-1"><Calendar size={16} /></div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start"><h4 className="text-sm font-bold text-gray-900">{log.evento}</h4><span className="text-xs text-gray-400 font-medium">{log.fecha}</span></div>
+                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><User size={10} /> {log.tecnico}</p>
+                    <span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${['Aprobado', 'Ok'].includes(log.s) ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700'}`}>{log.s}</span></div>
+                  </div>
+                </div>
               ))}
             </div>
           )}
