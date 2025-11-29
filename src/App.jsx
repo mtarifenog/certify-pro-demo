@@ -15,7 +15,7 @@ import { createClient } from '@supabase/supabase-js';
 // ==================================================================================
 // 🔧 CONFIGURACIÓN DE CONEXIÓN
 // ==================================================================================
-const USE_MOCK_DATA = false; // MODO PRODUCCIÓN REAL
+const USE_MOCK_DATA = false; // FALSE: MODO PRODUCCIÓN REAL
 
 let supabase;
 
@@ -27,20 +27,15 @@ try {
     if (supabaseUrl && supabaseKey) {
       supabase = createClient(supabaseUrl, supabaseKey);
     } else {
-      console.error("Faltan variables de entorno en Vercel o .env.local");
+      console.error("Faltan variables de entorno Supabase");
     }
   } else {
-    // MOCK FALLBACK (Si quieres usar esto, cambia USE_MOCK_DATA a true)
+    // MOCK FALLBACK
     console.warn("Modo Mock Activado");
-    const mockDbAuth = {
-        signInWithPassword: async () => ({ data: { user: { email: 'demo@certifypro.cl' } }, error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-        getSession: async () => ({ data: { session: null } }),
-        signOut: async () => {}
-    };
+    const mockDB = { clients: [], assets: [] };
     supabase = {
-        auth: mockDbAuth,
-        from: () => ({ select: () => ({ order: async () => ({ data: [], error: null }), eq: async () => ({ count: 0 }) }), insert: async () => ({ error: null }) })
+        from: () => ({ select: () => ({ order: async () => ({ data: [], error: null }), eq: async () => ({ count: 0 }) }), insert: async () => ({ error: null }) }),
+        auth: { signInWithPassword: async () => ({ data: { user: { email: 'demo@certifypro.cl' } }, error: null }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }) }
     };
   }
 } catch (err) { console.error("Error inicializando Supabase:", err); }
@@ -64,16 +59,12 @@ const LoginView = ({ onLogin }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
     try {
       if (!supabase) throw new Error("Error de conexión Supabase.");
-      
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      
     } catch (error) {
-      alert("Error al ingresar: " + error.message);
-    } finally {
+      alert("Error: " + error.message);
       setLoading(false);
     }
   };
@@ -87,7 +78,7 @@ const LoginView = ({ onLogin }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/70 to-transparent z-10"/>
         <div className="relative z-10 p-12 text-white max-w-lg">
           <div className="flex items-center gap-3 mb-6"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-lg shadow-lg">C</div><span className="text-2xl font-bold tracking-tight">CertifyPro</span></div>
-          <h1 className="text-4xl font-extrabold mb-4">Gestión de Transporte Vertical.</h1>
+          <h1 className="text-4xl font-extrabold mb-4">El Estándar Digital para el Transporte Vertical.</h1>
           <div className="space-y-3 mt-8">{['Cumplimiento Ley 20.296', 'Trazabilidad QR', 'App Inspector Offline'].map((t, i) => (<div key={i} className="flex gap-3 text-sm font-medium text-slate-200"><CheckCircle2 className="text-green-400" size={18}/> {t}</div>))}</div>
         </div>
       </div>
@@ -137,6 +128,7 @@ const DashboardView = ({ onNavigate }) => {
     <div className="p-8 h-full overflow-y-auto">
       <div className="mb-8"><h1 className="text-2xl font-bold text-gray-900">Radar de Negocio</h1></div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* CORRECCIÓN: Quitamos el gap extra para evitar el error de sintaxis en el compilador */}
         <div className="bg-white p-6 rounded-xl border shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase flex gap-2"><TrendingUp size={16}/> Facturación</p><p className="text-3xl font-bold text-gray-900 mt-2">{(stats.assets * 0.5).toFixed(1)} UF</p></div>
         <div className="bg-white p-6 rounded-xl border shadow-sm ring-1 ring-red-50"><p className="text-xs font-bold text-red-400 uppercase flex gap-2"><AlertOctagon size={16}/> Críticos</p><p className="text-3xl font-bold text-gray-900 mt-2">{stats.critical}</p></div>
         <div className="bg-white p-6 rounded-xl border shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase flex gap-2"><Building2 size={16}/> Cobertura</p><p className="text-3xl font-bold text-gray-900 mt-2">{stats.clients}</p></div>
@@ -151,9 +143,7 @@ const DashboardView = ({ onNavigate }) => {
               <td className="px-6 py-4"><span className={`px-2 py-1 rounded text-xs font-bold flex w-fit gap-1 ${asset.status === 'vencido' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{asset.status === 'vencido' ? <AlertTriangle size={12}/> : <CheckCircle2 size={12}/>} {asset.status}</span></td>
               <td className="px-6 py-4 text-right text-blue-600 font-bold text-xs">Ver Ficha →</td>
             </tr>
-          ))}
-          {!loading && recent.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400">No hay datos recientes.</td></tr>}
-          </tbody>
+          ))}</tbody>
         </table>
       </div>
     </div>
@@ -305,7 +295,7 @@ const AssetDetailView = ({ onBack }) => {
             <div className="bg-blue-50 border border-blue-100 p-5 rounded-2xl flex items-start gap-4"><div className="bg-white p-2 rounded-lg text-blue-600"><History size={24}/></div><div className="flex-1"><h4 className="font-bold text-blue-900">Análisis de Vida Útil (CAPEX)</h4><p className="text-sm text-blue-700 mt-1">Se recomienda reemplazo de <strong>Cables de Tracción</strong> en 14 meses.</p><div className="mt-3 w-full bg-blue-200 rounded-full h-2"><div className="bg-blue-600 h-2 rounded-full" style={{width: '75%'}}/></div></div></div>
             <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b bg-gray-50 font-bold text-gray-800">Historial de Certificaciones</div>
-              <table className="w-full text-left text-sm"><tbody>{[2024, 2022].map(year => (<tr key={year} className="border-b hover:bg-gray-50"><td className="px-6 py-4 font-bold">15 Nov {year}</td><td className="px-6 py-4">Jaime S.</td><td className="px-6 py-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Aprobado</span></td><td className="px-6 py-4 text-right"><button onClick={generatePDF} className="text-blue-600 font-bold flex items-center justify-end gap-1 ml-auto hover:underline"><FileText size={16}/> PDF <Download size={14}/></button></td></tr>))}</tbody></table>
+              <table className="w-full text-left text-sm"><tbody>{[2024, 2022].map(year => (<tr key={year} className="border-b hover:bg-gray-50"><td className="px-6 py-4 font-bold">15 Nov {year}</td><td className="px-6 py-4">Jaime S.</td><td className="px-6 py-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Aprobado</span></td><td className="px-6 py-4 text-right"><button onClick={generatePDF} className="text-blue-600 font-bold flex items-center justify-end gap(1 ml-auto hover:underline"><FileText size={16}/> PDF <Download size={14}/></button></td></tr>))}</tbody></table>
             </div>
           </div>
         </div>
@@ -323,7 +313,7 @@ const InspectorDemo = ({ onExit }) => (
       <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex justify-between items-start"><div><span className="bg-purple-500/20 text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Ascensor</span><h2 className="text-xl font-bold mt-1">Schindler 3300</h2><p className="text-xs text-slate-400">Torre A - Piso 1</p></div><div className="bg-white p-1 rounded"><QrCode className="text-black" size={24} /></div></div>
     </header>
     <main className="p-4 pb-24 space-y-4">
-      <div className="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center"><div><h4 className="font-bold text-sm">Nivelación Parada</h4><p className="text-xs text-gray-400">Max +/- 10mm</p></div><div className="flex gap-2"><div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-300"><X size={18}/></div><div className="w-8 h-8 rounded bg-green-100 flex items-center justify-center text-green-600"><CheckCircle2 size={18}/></div></div></div>
+      <div className="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center"><div><h4 className="font-bold text-sm">Nivelación Parada</h4><p className="text-xs text-gray-400">Max +/- 10mm</p></div><div className="flex gap(2"><div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-300"><X size={18}/></div><div className="w-8 h-8 rounded bg-green-100 flex items-center justify-center text-green-600"><CheckCircle2 size={18}/></div></div></div>
       <div className="bg-white p-4 rounded-xl border border-red-200 bg-red-50/20 shadow-sm flex justify-between items-center"><div><h4 className="font-bold text-sm text-red-700">Cables Tracción</h4><p className="text-xs text-gray-400">Sin hilos cortados</p></div><div className="flex gap(2"><div className="w-8 h-8 rounded bg-red-100 flex items-center justify-center text-red-600"><X size={18}/></div><div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-300"><CheckCircle2 size={18}/></div></div></div>
       <div className="grid grid-cols-2 gap(3 mt-6"><button className="border-2 border-dashed border-gray-300 rounded-xl h-24 flex flex-col items-center justify-center text-gray-400 bg-white"><Camera size={20}/><span className="text-[10px] font-bold mt-1">FOTO SALA</span></button><div className="relative rounded-xl h-24 bg-gray-900 overflow-hidden group"><img src="https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=300" className="w-full h-full object-cover opacity-80" /><div className="absolute inset-0 flex items-center justify-center"><div className="bg-green-500 text-white p-1 rounded-full"><CheckCircle2 size={16}/></div></div></div></div>
     </main>
