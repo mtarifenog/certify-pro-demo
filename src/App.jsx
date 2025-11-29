@@ -15,7 +15,7 @@ import { createClient } from '@supabase/supabase-js';
 // ==================================================================================
 // 🔧 CONFIGURACIÓN DE CONEXIÓN
 // ==================================================================================
-const USE_MOCK_DATA = false; // FALSE: MODO PRODUCCIÓN REAL
+const USE_MOCK_DATA = false; // MODO PRODUCCIÓN REAL
 
 let supabase;
 
@@ -27,8 +27,21 @@ try {
     if (supabaseUrl && supabaseKey) {
       supabase = createClient(supabaseUrl, supabaseKey);
     } else {
-      console.error("🔴 ERROR: Faltan variables de entorno Supabase");
+      console.error("Faltan variables de entorno en Vercel o .env.local");
     }
+  } else {
+    // MOCK FALLBACK (Si quieres usar esto, cambia USE_MOCK_DATA a true)
+    console.warn("Modo Mock Activado");
+    const mockDbAuth = {
+        signInWithPassword: async () => ({ data: { user: { email: 'demo@certifypro.cl' } }, error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+        getSession: async () => ({ data: { session: null } }),
+        signOut: async () => {}
+    };
+    supabase = {
+        auth: mockDbAuth,
+        from: () => ({ select: () => ({ order: async () => ({ data: [], error: null }), eq: async () => ({ count: 0 }) }), insert: async () => ({ error: null }) })
+    };
   }
 } catch (err) { console.error("Error inicializando Supabase:", err); }
 
@@ -60,6 +73,7 @@ const LoginView = ({ onLogin }) => {
       
     } catch (error) {
       alert("Error al ingresar: " + error.message);
+    } finally {
       setLoading(false);
     }
   };
@@ -102,14 +116,19 @@ const DashboardView = ({ onNavigate }) => {
   useEffect(() => {
     async function loadData() {
         if (!supabase) return;
-        const { count: clientsCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
-        const { count: assetsCount } = await supabase.from('assets').select('*', { count: 'exact', head: true });
-        const { count: criticalCount } = await supabase.from('assets').select('*', { count: 'exact', head: true }).eq('status', 'vencido');
-        const { data: assetsData } = await supabase.from('assets').select('*, clients(name)').order('created_at', { ascending: false }).limit(5);
-        
-        setStats({ clients: clientsCount || 0, assets: assetsCount || 0, critical: criticalCount || 0 });
-        setRecent(assetsData || []);
-        setLoading(false);
+        try {
+            const { count: clientsCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
+            const { count: assetsCount } = await supabase.from('assets').select('*', { count: 'exact', head: true });
+            const { count: criticalCount } = await supabase.from('assets').select('*', { count: 'exact', head: true }).eq('status', 'vencido');
+            const { data: assetsData } = await supabase.from('assets').select('*, clients(name)').order('created_at', { ascending: false }).limit(5);
+            
+            setStats({ clients: clientsCount || 0, assets: assetsCount || 0, critical: criticalCount || 0 });
+            setRecent(assetsData || []);
+        } catch (error) {
+            console.error("Error cargando dashboard:", error);
+        } finally {
+            setLoading(false);
+        }
     }
     loadData();
   }, []);
@@ -123,7 +142,7 @@ const DashboardView = ({ onNavigate }) => {
         <div className="bg-white p-6 rounded-xl border shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase flex gap-2"><Building2 size={16}/> Cobertura</p><p className="text-3xl font-bold text-gray-900 mt-2">{stats.clients}</p></div>
       </div>
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-800">Próximos Vencimientos</h3>{loading && <Loader2 className="animate-spin text-blue-500" size={18} />}</div>
+        <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-800">Inventario Reciente</h3>{loading && <Loader2 className="animate-spin text-blue-500" size={18} />}</div>
         <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500 font-medium"><tr><th className="px-6 py-3">Cliente</th><th className="px-6 py-3">Activo</th><th className="px-6 py-3">Estado</th><th className="px-6 py-3 text-right">Acción</th></tr></thead>
           <tbody className="divide-y divide-gray-100">{recent.map(asset => (
             <tr key={asset.id} className="hover:bg-blue-50/50 cursor-pointer" onClick={() => onNavigate('detail')}>
@@ -132,7 +151,9 @@ const DashboardView = ({ onNavigate }) => {
               <td className="px-6 py-4"><span className={`px-2 py-1 rounded text-xs font-bold flex w-fit gap-1 ${asset.status === 'vencido' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{asset.status === 'vencido' ? <AlertTriangle size={12}/> : <CheckCircle2 size={12}/>} {asset.status}</span></td>
               <td className="px-6 py-4 text-right text-blue-600 font-bold text-xs">Ver Ficha →</td>
             </tr>
-          ))}</tbody>
+          ))}
+          {!loading && recent.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400">No hay datos recientes.</td></tr>}
+          </tbody>
         </table>
       </div>
     </div>
@@ -171,7 +192,7 @@ const ClientPortfolioView = ({ onNavigate }) => {
     const { error } = await supabase.from('clients').insert([{ 
         name: newClient.name, 
         address: newClient.address, 
-        admin_name: newClient.admin, // Mapeo correcto
+        admin_name: newClient.admin, 
         image_url: randomImage 
     }]);
     
@@ -278,7 +299,7 @@ const AssetDetailView = ({ onBack }) => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="space-y-6">
             <div className="bg-white p-4 rounded-2xl border shadow-sm"><h3 className="font-bold text-gray-700 mb-3 text-sm">Registro Visual</h3><div className="h-48 rounded-xl overflow-hidden relative"><img src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069" className="w-full h-full object-cover" /><div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded">CABINA</div></div></div>
-            <div className="bg-white p-6 rounded-2xl border shadow-sm text-sm space-y-3"><h3 className="font-bold text-gray-700 mb-4 flex gap-2"><Settings size={16}/> Ficha Técnica</h3><div className="flex justify-between border-b pb-2"><span className="text-gray-500">Marca</span><span className="font-bold">Otis Gen2</span></div><div className="flex justify-between border-b pb-2"><span className="text-gray-500">Capacidad</span><span className="font-bold">630 Kg</span></div></div>
+            <div className="bg-white p-6 rounded-2xl border shadow-sm text-sm space-y-3"><h3 className="font-bold text-gray-700 mb-4 flex gap-2"><Settings size={16}/> Ficha Técnica</h3><div className="flex justify-between border-b pb-2"><span className="text-gray-500">Marca</span><span className="font-bold">Otis Gen2</span></div><div className="flex justify-between border-b pb-2"><span className="font-bold">630 Kg</span></div></div>
           </div>
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-blue-50 border border-blue-100 p-5 rounded-2xl flex items-start gap-4"><div className="bg-white p-2 rounded-lg text-blue-600"><History size={24}/></div><div className="flex-1"><h4 className="font-bold text-blue-900">Análisis de Vida Útil (CAPEX)</h4><p className="text-sm text-blue-700 mt-1">Se recomienda reemplazo de <strong>Cables de Tracción</strong> en 14 meses.</p><div className="mt-3 w-full bg-blue-200 rounded-full h-2"><div className="bg-blue-600 h-2 rounded-full" style={{width: '75%'}}/></div></div></div>
@@ -303,10 +324,10 @@ const InspectorDemo = ({ onExit }) => (
     </header>
     <main className="p-4 pb-24 space-y-4">
       <div className="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center"><div><h4 className="font-bold text-sm">Nivelación Parada</h4><p className="text-xs text-gray-400">Max +/- 10mm</p></div><div className="flex gap-2"><div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-300"><X size={18}/></div><div className="w-8 h-8 rounded bg-green-100 flex items-center justify-center text-green-600"><CheckCircle2 size={18}/></div></div></div>
-      <div className="bg-white p-4 rounded-xl border border-red-200 bg-red-50/20 shadow-sm flex justify-between items-center"><div><h4 className="font-bold text-sm text-red-700">Cables Tracción</h4><p className="text-xs text-gray-400">Sin hilos cortados</p></div><div className="flex gap-2"><div className="w-8 h-8 rounded bg-red-100 flex items-center justify-center text-red-600"><X size={18}/></div><div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-300"><CheckCircle2 size={18}/></div></div></div>
-      <div className="grid grid-cols-2 gap-3 mt-6"><button className="border-2 border-dashed border-gray-300 rounded-xl h-24 flex flex-col items-center justify-center text-gray-400 bg-white"><Camera size={20}/><span className="text-[10px] font-bold mt-1">FOTO SALA</span></button><div className="relative rounded-xl h-24 bg-gray-900 overflow-hidden group"><img src="https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=300" className="w-full h-full object-cover opacity-80" /><div className="absolute inset-0 flex items-center justify-center"><div className="bg-green-500 text-white p-1 rounded-full"><CheckCircle2 size={16}/></div></div></div></div>
+      <div className="bg-white p-4 rounded-xl border border-red-200 bg-red-50/20 shadow-sm flex justify-between items-center"><div><h4 className="font-bold text-sm text-red-700">Cables Tracción</h4><p className="text-xs text-gray-400">Sin hilos cortados</p></div><div className="flex gap(2"><div className="w-8 h-8 rounded bg-red-100 flex items-center justify-center text-red-600"><X size={18}/></div><div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-300"><CheckCircle2 size={18}/></div></div></div>
+      <div className="grid grid-cols-2 gap(3 mt-6"><button className="border-2 border-dashed border-gray-300 rounded-xl h-24 flex flex-col items-center justify-center text-gray-400 bg-white"><Camera size={20}/><span className="text-[10px] font-bold mt-1">FOTO SALA</span></button><div className="relative rounded-xl h-24 bg-gray-900 overflow-hidden group"><img src="https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=300" className="w-full h-full object-cover opacity-80" /><div className="absolute inset-0 flex items-center justify-center"><div className="bg-green-500 text-white p-1 rounded-full"><CheckCircle2 size={16}/></div></div></div></div>
     </main>
-    <div className="fixed bottom-0 max-w-md w-full p-4 bg-white/90 backdrop-blur border-t z-20"><button onClick={onExit} className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg"><UploadCloud size={20}/> Finalizar Inspección</button></div>
+    <div className="fixed bottom-0 max-w-md w-full p-4 bg-white/90 backdrop-blur border-t z-20"><button onClick={onExit} className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl flex items-center justify-center gap(2 shadow-lg"><UploadCloud size={20}/> Finalizar Inspección</button></div>
   </div>
 );
 
@@ -348,12 +369,10 @@ const PublicQRDemo = ({ onExit }) => {
           <p className="text-green-100 text-xs font-medium uppercase tracking-wider">Operativo y Seguro</p>
         </div>
         <div className="flex border-b border-gray-100 bg-gray-50/50">
-          <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
+          <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap(2 transition-colors ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
             <FileText size={16} /> Certificado
           </button>
-          <button onClick={() => setActiveTab('bitacora')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'bitacora' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
-            <History size={16} /> Bitácora
-          </button>
+          <button onClick={() => setActiveTab('bitacora')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap(2 transition-colors ${activeTab === 'bitacora' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}><History size={16} /> Bitácora</button>
         </div>
         <div className="flex-1 overflow-y-auto p-0 bg-white">
           {activeTab === 'certificate' && (
@@ -361,7 +380,7 @@ const PublicQRDemo = ({ onExit }) => {
               <div className="text-center mb-6"><h2 className="text-gray-900 font-bold text-lg">Ascensor Pasajeros Torre A</h2><p className="text-gray-500 text-sm">Schindler 3300 • ID: 12.344-5</p></div>
               <div className="bg-blue-50 rounded-xl p-4 border border-blue-100 mb-6 flex justify-between items-center"><div><p className="text-[10px] text-blue-400 font-bold uppercase">Última Mantención</p><p className="text-lg font-bold text-blue-900">15 Nov 2024</p></div><div className="text-right"><p className="text-[10px] text-blue-400 font-bold uppercase">Próxima Visita</p><p className="text-sm font-bold text-blue-600">15 Dic 2024</p></div></div>
               <div className="space-y-3">
-                <button onClick={generatePDF} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md"><Download size={18}/> Descargar PDF Oficial</button>
+                <button onClick={generatePDF} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap(2 shadow-md"><Download size={18}/> Descargar PDF Oficial</button>
                 <div className="text-center mt-4"><p className="text-xs text-gray-400">Certificación Ley 20.296</p></div>
               </div>
             </div>
@@ -369,21 +388,14 @@ const PublicQRDemo = ({ onExit }) => {
           {activeTab === 'bitacora' && (
             <div className="divide-y divide-gray-100 animate-in fade-in slide-in-from-bottom-2 duration-300">
               {bitacora.map((log, i) => (
-                <div key={i} className="p-4 hover:bg-gray-50 transition-colors flex items-start gap-3">
-                  <div className="bg-gray-100 p-2 rounded-lg text-gray-500 mt-1"><Calendar size={16} /></div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start"><h4 className="text-sm font-bold text-gray-900">{log.evento}</h4><span className="text-xs text-gray-400 font-medium">{log.fecha}</span></div>
-                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><User size={10} /> {log.tecnico}</p>
-                    <span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${['Aprobado', 'Ok'].includes(log.s) ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700'}`}>{log.s}</span></div>
-                  </div>
-                </div>
+                <div key={i} className="p-4 hover:bg-gray-50 transition-colors flex items-start gap(3"><div className="bg-gray-100 p-2 rounded-lg text-gray-500 mt-1"><Calendar size={16} /></div><div className="flex-1"><div className="flex justify-between items-start"><h4 className="text-sm font-bold text-gray-900">{log.evento}</h4><span className="text-xs text-gray-400 font-medium">{log.fecha}</span></div><p className="text-xs text-gray-500 mt-1 flex items-center gap(1"><User size={10} /> {log.tecnico}</p><span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${['Aprobado', 'Ok'].includes(log.s) ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700'}`}>{log.s}</span></div></div>
               ))}
             </div>
           )}
         </div>
-        <div className="bg-gray-50 p-3 text-center border-t shrink-0"><p className="text-[10px] text-gray-400 flex items-center justify-center gap-1">Plataforma CertifyPro Cloud <ExternalLink size={8} /></p></div>
+        <div className="bg-gray-50 p-3 text-center border-t shrink-0"><p className="text-[10px] text-gray-400 flex items-center justify-center gap(1">Plataforma CertifyPro Cloud <ExternalLink size={8} /></p></div>
       </div>
-      <button className="mt-6 text-red-500 text-xs font-bold flex items-center gap-2 hover:bg-red-50 px-4 py-2 rounded-full transition-all relative z-20"><AlertTriangle size={14} /> Reportar Falla</button>
+      <button className="mt-6 text-red-500 text-xs font-bold flex items-center gap(2 hover:bg-red-50 px-4 py-2 rounded-full transition-all relative z-20"><AlertTriangle size={14} /> Reportar Falla</button>
     </div>
   );
 };
@@ -415,7 +427,7 @@ export default function App() {
     return (
       <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans">
         <aside className="w-64 bg-slate-900 text-white hidden md:flex flex-col h-screen sticky top-0">
-          <div className="p-6 border-b border-slate-800 flex gap-2 items-center"><div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold">C</div><span className="font-bold text-xl">CertifyPro</span></div>
+          <div className="p-6 border-b border-slate-800 flex gap(2 items-center"><div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold">C</div><span className="font-bold text-xl">CertifyPro</span></div>
           <nav className="flex-1 p-4 space-y-2">
             {[
               { id: 'dashboard', icon: <LayoutDashboard size={20}/>, label: 'Radar de Negocio' },
@@ -423,24 +435,24 @@ export default function App() {
               { id: 'inspector', icon: <Smartphone size={20}/>, label: 'App Inspector' },
               { id: 'public', icon: <QrCode size={20}/>, label: 'QR Público' },
             ].map(item => (
-              <button key={item.id} onClick={() => setCurrentView(item.id)} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors ${currentView === item.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+              <button key={item.id} onClick={() => setCurrentView(item.id)} className={`w-full flex items-center gap(3 px-3 py-3 rounded-lg text-left transition-colors ${currentView === item.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                 {item.icon} <span className="font-medium text-sm">{item.label}</span>
               </button>
             ))}
           </nav>
           <div className="p-4 border-t border-slate-800">
             <div className="bg-slate-800 rounded-xl p-4 mb-3"><p className="text-xs text-slate-400 mb-1">Saldo</p><p className="text-xl font-bold">14 Créditos</p></div>
-            <button onClick={() => { setIsLoggedIn(false); if(supabase && supabase.auth) supabase.auth.signOut(); }} className="flex gap-2 text-slate-400 hover:text-white text-sm px-2"><LogOut size={16}/> Salir</button>
+            <button onClick={() => { setIsLoggedIn(false); if(supabase && supabase.auth) supabase.auth.signOut(); }} className="flex gap(2 text-slate-400 hover:text-white text-sm px-2"><LogOut size={16}/> Salir</button>
           </div>
         </aside>
 
         <main className="flex-1 h-screen overflow-hidden flex flex-col">
           <header className="h-16 bg-white border-b flex justify-between items-center px-6 shrink-0">
-            <div className="flex items-center gap-4 text-gray-400">
+            <div className="flex items-center gap(4 text-gray-400">
               <Menu className="md:hidden text-gray-600" />
-              <div className="hidden md:flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg w-64"><Search size={18}/><input placeholder="Buscar..." className="bg-transparent outline-none text-sm w-full"/></div>
+              <div className="hidden md:flex items-center gap(2 bg-gray-100 px-4 py-2 rounded-lg w-64"><Search size={18}/><input placeholder="Buscar..." className="bg-transparent outline-none text-sm w-full"/></div>
             </div>
-            <div className="flex items-center gap-4"><Bell size={20} className="text-gray-400"/><div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">JA</div></div>
+            <div className="flex items-center gap(4"><Bell size={20} className="text-gray-400"/><div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">JA</div></div>
           </header>
           <div className="flex-1 overflow-hidden">
             {currentView === 'dashboard' && <DashboardView onNavigate={setCurrentView} />}
