@@ -77,7 +77,7 @@ const LoginView = ({ onLogin }) => {
         ))}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/70 to-transparent z-10"/>
         <div className="relative z-10 p-12 text-white max-w-lg">
-          <div className="flex items-center gap-3 mb-6"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-lg shadow-lg">C</div><span className="text-2xl font-bold tracking-tight">CertifyPro</span></div>
+          <div className="flex items-center gap-3 mb-6"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-lg shadow-lg">C</div><span className="font-bold text-xl tracking-tight">CertifyPro</span></div>
           <h1 className="text-4xl font-extrabold mb-4">El Estándar Digital para el Transporte Vertical.</h1>
           <div className="space-y-3 mt-8">{['Cumplimiento Ley 20.296', 'Trazabilidad QR', 'App Inspector Offline'].map((t, i) => (<div key={i} className="flex gap-3 text-sm font-medium text-slate-200"><CheckCircle2 className="text-green-400" size={18}/> {t}</div>))}</div>
         </div>
@@ -358,7 +358,7 @@ const PublicQRDemo = ({ onExit }) => {
           <p className="text-green-100 text-xs font-medium uppercase tracking-wider">Operativo y Seguro</p>
         </div>
         <div className="flex border-b border-gray-100 bg-gray-50/50">
-          <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap(2 transition-colors ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
+          <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
             <FileText size={16} /> Certificado
           </button>
           <button onClick={() => setActiveTab('bitacora')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap(2 transition-colors ${activeTab === 'bitacora' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}><History size={16} /> Bitácora</button>
