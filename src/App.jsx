@@ -264,7 +264,7 @@ const AssetDetailView = ({ onBack }) => {
   useEffect(() => {
     // Genera el QR con la URL de acceso público
     const publicLink = window.location.origin + window.location.pathname + '?view=public';
-    QRCode.toDataURL(publicLink).then(setQrUrl);
+    QRCode.toDataURL(window.location.href).then(setQrUrl);
   }, []);
 
   const generatePDF = async () => {
