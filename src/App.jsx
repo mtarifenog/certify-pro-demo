@@ -7,94 +7,42 @@ import {
   ShieldCheck, ExternalLink, Camera, UploadCloud, Menu, FileText, Calendar, User
 } from 'lucide-react';
 
-// ==================================================================================
-// 📦 ZONA DE LIBRERÍAS (MOCKS PARA DEMO)
-// ==================================================================================
-// NOTA PARA TU PC LOCAL:
-// 1. Instala las librerías: npm install @supabase/supabase-js jspdf qrcode
-// 2. DESCOMENTA los imports reales abajo y BORRA los simuladores Mock.
-
-// --- IMPORTS REALES (Comentar aquí) ---
-// import { createClient } from '@supabase/supabase-js';
-// import jsPDF from 'jspdf';
-// import QRCode from 'qrcode';
-
-// --- SIMULADORES (Para que funcione aquí sin errores) ---
-const MockJsPDF = class {
-  constructor() {}
-  setLineWidth() {} setDrawColor() {} rect() {} setFont() {} setFontSize() {} setTextColor() {} text() {} line() {} setFillColor() {} roundedRect() {} addImage() {}
-  save(name) { alert(`🎉 PDF GENERADO (Simulación)\nArchivo: ${name}`); }
-};
-
-const MockQRCode = {
-  toDataURL: async () => "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-};
-
-// Selección automática de librería
-const jsPDF = MockJsPDF;
-const QRCode = MockQRCode;
-const createClient = (url, key) => ({
-    auth: {
-        signInWithPassword: async () => ({ data: { user: { email: 'demo@certifypro.cl' } }, error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-        getSession: async () => ({ data: { session: null } }),
-        signOut: async () => {}
-    },
-    from: (table) => ({ select: () => ({ order: async () => ({ data: [], error: null }), eq: async () => ({ count: 0 }) }), insert: async () => ({ error: null }) })
-});
+// --- LIBRERÍAS REALES ---
+import jsPDF from 'jspdf';
+import QRCode from 'qrcode';
+import { createClient } from '@supabase/supabase-js';
 
 // ==================================================================================
-// 🔧 CONFIGURACIÓN DE DATOS
+// 🔧 CONFIGURACIÓN DE CONEXIÓN
 // ==================================================================================
-const USE_MOCK_DATA = true; // true = Demo Visual
+const USE_MOCK_DATA = false; // MODO PRODUCCIÓN REAL
 
-// --- CLIENTE SUPABASE (Simulado) ---
 let supabase;
 
-const mockDB = {
-  clients: [
-    { id: 1, name: "Edificio Torre Marina", address: "Av. Perú 100", admin_name: "Juan Pérez", image_url: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=1000", status: 'active' },
-    { id: 2, name: "Mall Plaza V", address: "14 Norte, Viña", admin_name: "Gerencia Ops", image_url: "https://images.unsplash.com/photo-1519567241046-7f570eee3d9f?q=80&w=1000", status: 'active' }
-  ],
-  assets: [
-    { id: 1, name: 'Ascensor Panorámico', type: 'elevator', location: 'Hall', status: 'vigente', next_certification_date: '2025-11-15', client_id: 1, clients: {name: "Edificio Torre Marina"} },
-    { id: 2, name: 'Montacargas', type: 'elevator', location: 'Bodega', status: 'vencido', next_certification_date: '2023-01-01', client_id: 2, clients: {name: "Mall Plaza V"} }
-  ]
-};
+try {
+  if (!USE_MOCK_DATA) {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!USE_MOCK_DATA) {
-  // CONEXIÓN REAL (Código comentado para evitar error en el compilador de la vista previa)
-  // const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  // const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  // supabase = createClient(supabaseUrl, supabaseKey);
-} else {
-  // CONEXIÓN MOCK ROBUSTA
-  supabase = {
-    from: (table) => ({
-      select: () => ({
-        order: async () => { await new Promise(r => setTimeout(r, 500)); return { data: mockDB[table] || [], error: null }; },
-        eq: async (col, val) => { return { count: 0, data: [], error: null }; }
-      }),
-      insert: async (row) => { 
-        await new Promise(r => setTimeout(r, 800)); 
-        if(mockDB[table]) mockDB[table].unshift({...row[0], id: Math.random()});
-        return { error: null }; 
-      }
-    }),
-    auth: {
-        signInWithPassword: async () => ({ data: { user: { email: 'demo@certifypro.cl' } }, error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-        getSession: async () => ({ data: { session: null } }),
-        signOut: async () => {}
+    if (supabaseUrl && supabaseKey) {
+      supabase = createClient(supabaseUrl, supabaseKey);
+    } else {
+      console.error("Faltan variables de entorno Supabase");
     }
-  };
-}
+  } else {
+    // MOCK FALLBACK
+    console.warn("Modo Mock Activado");
+    const mockDB = { clients: [], assets: [] };
+    supabase = {
+        from: (table) => ({ select: () => ({ order: async () => ({ data: [], error: null }), eq: async () => ({ count: 0 }) }), insert: async () => ({ error: null }) }),
+        auth: { signInWithPassword: async () => ({ data: { user: { email: 'demo@certifypro.cl' } }, error: null }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }) }
+    };
+  }
+} catch (err) { console.error("Error inicializando Supabase:", err); }
 
 // ==================================================================================
-// 📱 VISTAS Y COMPONENTES
-// ==================================================================================
-
 // 1. LOGIN VIEW
+// ==================================================================================
 const LoginView = ({ onLogin }) => {
   const images = [
     "https://images.unsplash.com/photo-1572697262272-35919e99277b?q=80&w=2070&auto=format&fit=crop",
@@ -102,11 +50,23 @@ const LoginView = ({ onLogin }) => {
     "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069&auto=format&fit=crop"
   ];
   const [idx, setIdx] = useState(0);
+  const [email, setEmail] = useState('mtarifenog@gmail.com');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => { const i = setInterval(() => setIdx(p => (p + 1) % images.length), 5000); return () => clearInterval(i); }, []);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    onLogin();
+    setLoading(true);
+    try {
+      if (!supabase) throw new Error("Error de conexión Supabase.");
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } catch (error) {
+      alert("Error: " + error.message);
+      setLoading(false);
+    }
   };
 
   return (
@@ -119,7 +79,6 @@ const LoginView = ({ onLogin }) => {
         <div className="relative z-10 p-12 text-white max-w-lg">
           <div className="flex items-center gap-3 mb-6"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-lg shadow-lg">C</div><span className="font-bold text-xl tracking-tight">CertifyPro</span></div>
           <h1 className="text-4xl font-extrabold mb-4">El Estándar Digital para el Transporte Vertical.</h1>
-          <p className="text-slate-300 text-lg mb-8">Gestión integral de ascensores, escaleras mecánicas y activos críticos.</p>
           <div className="space-y-3 mt-8">{['Cumplimiento Ley 20.296', 'Trazabilidad QR', 'App Inspector Offline'].map((t, i) => (<div key={i} className="flex gap-3 text-sm font-medium text-slate-200"><CheckCircle2 className="text-green-400" size={18}/> {t}</div>))}</div>
         </div>
       </div>
@@ -127,9 +86,11 @@ const LoginView = ({ onLogin }) => {
         <div className="max-w-md w-full space-y-8">
           <div className="text-center lg:text-left"><h2 className="text-3xl font-bold text-gray-900">Bienvenido</h2><p className="text-gray-500">Acceso corporativo seguro.</p></div>
           <form className="space-y-6" onSubmit={handleLogin}>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" className="w-full p-3 border rounded-xl" placeholder="admin@empresa.com" defaultValue="admin@certifypro.cl" /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label><input type="password" className="w-full p-3 border rounded-xl" placeholder="••••••" defaultValue="123456" /></div>
-            <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 flex justify-center items-center gap-2">Ingresar <ArrowRight size={18}/></button>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border rounded-xl" required /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3 border rounded-xl" required /></div>
+            <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 flex justify-center items-center gap-2">
+                {loading ? <Loader2 className="animate-spin"/> : <>Ingresar <ArrowRight size={18}/></>}
+            </button>
           </form>
         </div>
       </div>
@@ -146,14 +107,19 @@ const DashboardView = ({ onNavigate }) => {
   useEffect(() => {
     async function loadData() {
         if (!supabase) return;
-        const { count: clientsCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
-        const { count: assetsCount } = await supabase.from('assets').select('*', { count: 'exact', head: true });
-        const { count: criticalCount } = await supabase.from('assets').select('*', { count: 'exact', head: true }).eq('status', 'vencido');
-        const { data: assetsData } = await supabase.from('assets').select('*, clients(name)').order('created_at', { ascending: false }).limit(5);
-        
-        setStats({ clients: clientsCount || 0, assets: assetsCount || 0, critical: criticalCount || 0 });
-        setRecent(assetsData || []);
-        setLoading(false);
+        try {
+            const { count: clientsCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
+            const { count: assetsCount } = await supabase.from('assets').select('*', { count: 'exact', head: true });
+            const { count: criticalCount } = await supabase.from('assets').select('*', { count: 'exact', head: true }).eq('status', 'vencido');
+            const { data: assetsData } = await supabase.from('assets').select('*, clients(name)').order('created_at', { ascending: false }).limit(5);
+            
+            setStats({ clients: clientsCount || 0, assets: assetsCount || 0, critical: criticalCount || 0 });
+            setRecent(assetsData || []);
+        } catch (error) {
+            console.error("Error cargando dashboard:", error);
+        } finally {
+            setLoading(false);
+        }
     }
     loadData();
   }, []);
@@ -296,7 +262,7 @@ const AssetDetailView = ({ onBack }) => {
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    // URL CORREGIDA: Apunta a la ruta base + ?view=public
+    // Genera el QR con la URL de acceso público
     const publicLink = window.location.origin + window.location.pathname + '?view=public';
     QRCode.toDataURL(publicLink).then(setQrUrl);
   }, []);
@@ -361,9 +327,7 @@ const PublicQRDemo = ({ onExit }) => {
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    // Genera el QR con la URL de acceso público
-    const publicLink = window.location.origin + window.location.pathname + '?view=public';
-    QRCode.toDataURL(publicLink).then(setQrUrl);
+    QRCode.toDataURL(window.location.href).then(setQrUrl);
   }, []);
 
   const generatePDF = () => {
