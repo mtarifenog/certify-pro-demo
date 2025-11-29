@@ -398,12 +398,18 @@ const PublicQRDemo = ({ onExit }) => {
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
+  const [isPublicAccess, setIsPublicAccess] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('view') === 'public') {
+    const publicAccess = params.get('view') === 'public';
+    
+    setIsPublicAccess(publicAccess);
+
+    if (publicAccess) {
       setIsLoggedIn(true);
       setCurrentView('public');
+      return;
     }
     
     if(supabase && supabase.auth) {
@@ -413,7 +419,9 @@ export default function App() {
     }
   }, []);
 
-  if (!isLoggedIn && currentView !== 'public') return <LoginView onLogin={() => setIsLoggedIn(true)} />;
+  if (isPublicAccess) return <PublicQRDemo onExit={() => setCurrentView('dashboard')} />;
+
+  if (!isLoggedIn) return <LoginView onLogin={() => setIsLoggedIn(true)} />;
 
   if (['dashboard', 'clients', 'detail'].includes(currentView)) {
     return (
@@ -434,7 +442,7 @@ export default function App() {
           </nav>
           <div className="p-4 border-t border-slate-800">
             <div className="bg-slate-800 rounded-xl p-4 mb-3"><p className="text-xs text-slate-400 mb-1">Saldo</p><p className="text-xl font-bold">14 Créditos</p></div>
-            <button onClick={() => { setIsLoggedIn(false); if(supabase && supabase.auth) supabase.auth.signOut(); }} className="flex gap-2 text-slate-400 hover:text-white text-sm px-2"><LogOut size={16}/> Salir</button>
+            <button onClick={() => { setIsLoggedIn(false); if(supabase) supabase.auth.signOut(); }} className="flex gap-2 text-slate-400 hover:text-white text-sm px-2"><LogOut size={16}/> Salir</button>
           </div>
         </aside>
 
