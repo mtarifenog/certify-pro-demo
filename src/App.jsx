@@ -27,15 +27,20 @@ try {
     if (supabaseUrl && supabaseKey) {
       supabase = createClient(supabaseUrl, supabaseKey);
     } else {
-      console.error("Faltan variables de entorno Supabase");
+      console.error("Faltan variables de entorno en Vercel o .env.local");
     }
   } else {
-    // MOCK FALLBACK
+    // MOCK FALLBACK (Si quieres usar esto, cambia USE_MOCK_DATA a true)
     console.warn("Modo Mock Activado");
-    const mockDB = { clients: [], assets: [] };
+    const mockDbAuth = {
+        signInWithPassword: async () => ({ data: { user: { email: 'demo@certifypro.cl' } }, error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+        getSession: async () => ({ data: { session: null } }),
+        signOut: async () => {}
+    };
     supabase = {
-        from: (table) => ({ select: () => ({ order: async () => ({ data: [], error: null }), eq: async () => ({ count: 0 }) }), insert: async () => ({ error: null }) }),
-        auth: { signInWithPassword: async () => ({ data: { user: { email: 'demo@certifypro.cl' } }, error: null }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }) }
+        auth: mockDbAuth,
+        from: () => ({ select: () => ({ order: async () => ({ data: [], error: null }), eq: async () => ({ count: 0 }) }), insert: async () => ({ error: null }) })
     };
   }
 } catch (err) { console.error("Error inicializando Supabase:", err); }
@@ -59,12 +64,16 @@ const LoginView = ({ onLogin }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
+    
     try {
       if (!supabase) throw new Error("Error de conexión Supabase.");
+      
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      
     } catch (error) {
-      alert("Error: " + error.message);
+      alert("Error al ingresar: " + error.message);
+    } finally {
       setLoading(false);
     }
   };
@@ -77,8 +86,8 @@ const LoginView = ({ onLogin }) => {
         ))}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/70 to-transparent z-10"/>
         <div className="relative z-10 p-12 text-white max-w-lg">
-          <div className="flex items-center gap-3 mb-6"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-lg shadow-lg">C</div><span className="font-bold text-xl tracking-tight">CertifyPro</span></div>
-          <h1 className="text-4xl font-extrabold mb-4">El Estándar Digital para el Transporte Vertical.</h1>
+          <div className="flex items-center gap-3 mb-6"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-lg shadow-lg">C</div><span className="text-2xl font-bold tracking-tight">CertifyPro</span></div>
+          <h1 className="text-4xl font-extrabold mb-4">Gestión de Transporte Vertical.</h1>
           <div className="space-y-3 mt-8">{['Cumplimiento Ley 20.296', 'Trazabilidad QR', 'App Inspector Offline'].map((t, i) => (<div key={i} className="flex gap-3 text-sm font-medium text-slate-200"><CheckCircle2 className="text-green-400" size={18}/> {t}</div>))}</div>
         </div>
       </div>
@@ -142,7 +151,9 @@ const DashboardView = ({ onNavigate }) => {
               <td className="px-6 py-4"><span className={`px-2 py-1 rounded text-xs font-bold flex w-fit gap-1 ${asset.status === 'vencido' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{asset.status === 'vencido' ? <AlertTriangle size={12}/> : <CheckCircle2 size={12}/>} {asset.status}</span></td>
               <td className="px-6 py-4 text-right text-blue-600 font-bold text-xs">Ver Ficha →</td>
             </tr>
-          ))}</tbody>
+          ))}
+          {!loading && recent.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400">No hay datos recientes.</td></tr>}
+          </tbody>
         </table>
       </div>
     </div>
@@ -262,15 +273,14 @@ const AssetDetailView = ({ onBack }) => {
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    // Genera el QR con la URL de acceso público
-    const publicLink = window.location.origin + window.location.pathname + '?view=public';
-    QRCode.toDataURL(window.location.href).then(setQrUrl);
+    const publicLink = typeof window !== 'undefined' ? `${window.location.origin}/?view=public` : 'https://certify-pro.vercel.app/?view=public';
+    QRCode.toDataURL(publicLink).then(setQrUrl);
   }, []);
 
   const generatePDF = async () => {
     const doc = new jsPDF();
     const certID = Math.random().toString(36).substr(2, 9).toUpperCase();
-    const qrImage = await QRCode.toDataURL(window.location.href + '?view=public');
+    const qrImage = await QRCode.toDataURL(`${window.location.origin}/?view=public`);
     doc.setLineWidth(1); doc.setDrawColor(34, 197, 94); doc.rect(10, 10, 190, 277);
     doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(30, 58, 138); doc.text("CERTIFICADO DE CONFORMIDAD", 105, 40, null, null, "center");
     doc.setFillColor(240); doc.rect(20, 155, 80, 60, 'FD'); doc.rect(110, 155, 80, 60, 'FD');
@@ -327,9 +337,7 @@ const PublicQRDemo = ({ onExit }) => {
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    // Genera el QR con la URL de acceso público
-    const publicLink = window.location.origin + window.location.pathname + '?view=public';
-    QRCode.toDataURL(publicLink).then(setQrUrl);
+    QRCode.toDataURL(window.location.href).then(setQrUrl);
   }, []);
 
   const generatePDF = () => {
@@ -361,7 +369,7 @@ const PublicQRDemo = ({ onExit }) => {
           <p className="text-green-100 text-xs font-medium uppercase tracking-wider">Operativo y Seguro</p>
         </div>
         <div className="flex border-b border-gray-100 bg-gray-50/50">
-          <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
+          <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap(2 transition-colors ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
             <FileText size={16} /> Certificado
           </button>
           <button onClick={() => setActiveTab('bitacora')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap(2 transition-colors ${activeTab === 'bitacora' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}><History size={16} /> Bitácora</button>
@@ -398,18 +406,12 @@ const PublicQRDemo = ({ onExit }) => {
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
-  const [isPublicAccess, setIsPublicAccess] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const publicAccess = params.get('view') === 'public';
-    
-    setIsPublicAccess(publicAccess);
-
-    if (publicAccess) {
+    if (params.get('view') === 'public') {
       setIsLoggedIn(true);
       setCurrentView('public');
-      return;
     }
     
     if(supabase && supabase.auth) {
@@ -419,15 +421,13 @@ export default function App() {
     }
   }, []);
 
-  if (isPublicAccess) return <PublicQRDemo onExit={() => setCurrentView('dashboard')} />;
-
-  if (!isLoggedIn) return <LoginView onLogin={() => setIsLoggedIn(true)} />;
+  if (!isLoggedIn && currentView !== 'public') return <LoginView onLogin={() => setIsLoggedIn(true)} />;
 
   if (['dashboard', 'clients', 'detail'].includes(currentView)) {
     return (
       <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans">
         <aside className="w-64 bg-slate-900 text-white hidden md:flex flex-col h-screen sticky top-0">
-          <div className="p-6 border-b border-slate-800 flex gap-2 items-center"><div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold">C</div><span className="font-bold text-xl">CertifyPro</span></div>
+          <div className="p-6 border-b border-slate-800 flex gap(2 items-center"><div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold">C</div><span className="font-bold text-xl">CertifyPro</span></div>
           <nav className="flex-1 p-4 space-y-2">
             {[
               { id: 'dashboard', icon: <LayoutDashboard size={20}/>, label: 'Radar de Negocio' },
@@ -435,24 +435,24 @@ export default function App() {
               { id: 'inspector', icon: <Smartphone size={20}/>, label: 'App Inspector' },
               { id: 'public', icon: <QrCode size={20}/>, label: 'QR Público' },
             ].map(item => (
-              <button key={item.id} onClick={() => setCurrentView(item.id)} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors ${currentView === item.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+              <button key={item.id} onClick={() => setCurrentView(item.id)} className={`w-full flex items-center gap(3 px-3 py-3 rounded-lg text-left transition-colors ${currentView === item.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                 {item.icon} <span className="font-medium text-sm">{item.label}</span>
               </button>
             ))}
           </nav>
           <div className="p-4 border-t border-slate-800">
             <div className="bg-slate-800 rounded-xl p-4 mb-3"><p className="text-xs text-slate-400 mb-1">Saldo</p><p className="text-xl font-bold">14 Créditos</p></div>
-            <button onClick={() => { setIsLoggedIn(false); if(supabase) supabase.auth.signOut(); }} className="flex gap-2 text-slate-400 hover:text-white text-sm px-2"><LogOut size={16}/> Salir</button>
+            <button onClick={() => { setIsLoggedIn(false); if(supabase && supabase.auth) supabase.auth.signOut(); }} className="flex gap(2 text-slate-400 hover:text-white text-sm px-2"><LogOut size={16}/> Salir</button>
           </div>
         </aside>
 
         <main className="flex-1 h-screen overflow-hidden flex flex-col">
           <header className="h-16 bg-white border-b flex justify-between items-center px-6 shrink-0">
-            <div className="flex items-center gap-4 text-gray-400">
+            <div className="flex items-center gap(4 text-gray-400">
               <Menu className="md:hidden text-gray-600" />
-              <div className="hidden md:flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg w-64"><Search size={18}/><input placeholder="Buscar..." className="bg-transparent outline-none text-sm w-full"/></div>
+              <div className="hidden md:flex items-center gap(2 bg-gray-100 px-4 py-2 rounded-lg w-64"><Search size={18}/><input placeholder="Buscar..." className="bg-transparent outline-none text-sm w-full"/></div>
             </div>
-            <div className="flex items-center gap-4"><Bell size={20} className="text-gray-400"/><div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">JA</div></div>
+            <div className="flex items-center gap(4"><Bell size={20} className="text-gray-400"/><div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">JA</div></div>
           </header>
           <div className="flex-1 overflow-hidden">
             {currentView === 'dashboard' && <DashboardView onNavigate={setCurrentView} />}
