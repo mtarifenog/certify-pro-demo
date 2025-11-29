@@ -262,14 +262,16 @@ const AssetDetailView = ({ onBack }) => {
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    const publicLink = typeof window !== 'undefined' ? `${window.location.origin}/?view=public` : 'https://certify-pro.vercel.app/?view=public';
+    // Genera el QR con la URL de acceso público
+    const publicLink = window.location.origin + window.location.pathname + '?view=public';
     QRCode.toDataURL(publicLink).then(setQrUrl);
   }, []);
 
   const generatePDF = async () => {
     const doc = new jsPDF();
     const certID = Math.random().toString(36).substr(2, 9).toUpperCase();
-    const qrImage = await QRCode.toDataURL(`${window.location.origin}/?view=public`);
+    // El QR en el PDF también debe usar la ruta pública correcta
+    const qrImage = await QRCode.toDataURL(window.location.origin + window.location.pathname + '?view=public');
     doc.setLineWidth(1); doc.setDrawColor(34, 197, 94); doc.rect(10, 10, 190, 277);
     doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(30, 58, 138); doc.text("CERTIFICADO DE CONFORMIDAD", 105, 40, null, null, "center");
     doc.setFillColor(240); doc.rect(20, 155, 80, 60, 'FD'); doc.rect(110, 155, 80, 60, 'FD');
