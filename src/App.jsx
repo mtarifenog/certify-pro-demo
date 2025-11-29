@@ -327,7 +327,9 @@ const PublicQRDemo = ({ onExit }) => {
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    QRCode.toDataURL(window.location.href).then(setQrUrl);
+    // Genera el QR con la URL de acceso público
+    const publicLink = window.location.origin + window.location.pathname + '?view=public';
+    QRCode.toDataURL(publicLink).then(setQrUrl);
   }, []);
 
   const generatePDF = () => {
