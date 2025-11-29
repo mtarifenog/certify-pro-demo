@@ -417,7 +417,7 @@ export default function App() {
     return (
       <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans">
         <aside className="w-64 bg-slate-900 text-white hidden md:flex flex-col h-screen sticky top-0">
-          <div className="p-6 border-b border-slate-800 flex gap(2 items-center"><div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold">C</div><span className="font-bold text-xl">CertifyPro</span></div>
+          <div className="p-6 border-b border-slate-800 flex gap-2 items-center"><div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold">C</div><span className="font-bold text-xl">CertifyPro</span></div>
           <nav className="flex-1 p-4 space-y-2">
             {[
               { id: 'dashboard', icon: <LayoutDashboard size={20}/>, label: 'Radar de Negocio' },
@@ -425,24 +425,24 @@ export default function App() {
               { id: 'inspector', icon: <Smartphone size={20}/>, label: 'App Inspector' },
               { id: 'public', icon: <QrCode size={20}/>, label: 'QR Público' },
             ].map(item => (
-              <button key={item.id} onClick={() => setCurrentView(item.id)} className={`w-full flex items-center gap(3 px-3 py-3 rounded-lg text-left transition-colors ${currentView === item.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+              <button key={item.id} onClick={() => setCurrentView(item.id)} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors ${currentView === item.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                 {item.icon} <span className="font-medium text-sm">{item.label}</span>
               </button>
             ))}
           </nav>
           <div className="p-4 border-t border-slate-800">
             <div className="bg-slate-800 rounded-xl p-4 mb-3"><p className="text-xs text-slate-400 mb-1">Saldo</p><p className="text-xl font-bold">14 Créditos</p></div>
-            <button onClick={() => { setIsLoggedIn(false); if(supabase && supabase.auth) supabase.auth.signOut(); }} className="flex gap(2 text-slate-400 hover:text-white text-sm px-2"><LogOut size={16}/> Salir</button>
+            <button onClick={() => { setIsLoggedIn(false); if(supabase && supabase.auth) supabase.auth.signOut(); }} className="flex gap-2 text-slate-400 hover:text-white text-sm px-2"><LogOut size={16}/> Salir</button>
           </div>
         </aside>
 
         <main className="flex-1 h-screen overflow-hidden flex flex-col">
           <header className="h-16 bg-white border-b flex justify-between items-center px-6 shrink-0">
-            <div className="flex items-center gap(4 text-gray-400">
+            <div className="flex items-center gap-4 text-gray-400">
               <Menu className="md:hidden text-gray-600" />
-              <div className="hidden md:flex items-center gap(2 bg-gray-100 px-4 py-2 rounded-lg w-64"><Search size={18}/><input placeholder="Buscar..." className="bg-transparent outline-none text-sm w-full"/></div>
+              <div className="hidden md:flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg w-64"><Search size={18}/><input placeholder="Buscar..." className="bg-transparent outline-none text-sm w-full"/></div>
             </div>
-            <div className="flex items-center gap(4"><Bell size={20} className="text-gray-400"/><div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">JA</div></div>
+            <div className="flex items-center gap-4"><Bell size={20} className="text-gray-400"/><div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">JA</div></div>
           </header>
           <div className="flex-1 overflow-hidden">
             {currentView === 'dashboard' && <DashboardView onNavigate={setCurrentView} />}
