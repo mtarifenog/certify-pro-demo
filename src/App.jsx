@@ -45,9 +45,9 @@ try {
 // ==================================================================================
 const LoginView = ({ onLogin }) => {
   const images = [
-    "[https://images.unsplash.com/photo-1572697262272-35919e99277b?q=80&w=2070&auto=format&fit=crop](https://images.unsplash.com/photo-1572697262272-35919e99277b?q=80&w=2070&auto=format&fit=crop)",
-    "[https://images.unsplash.com/photo-1535970793578-775347db1b86?q=80&w=2070&auto=format&fit=crop](https://images.unsplash.com/photo-1535970793578-775347db1b86?q=80&w=2070&auto=format&fit=crop)",
-    "[https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069&auto=format&fit=crop](https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069&auto=format&fit=crop)"
+    "https://images.unsplash.com/photo-1572697262272-35919e99277b?q=80&w=2070&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1535970793578-775347db1b86?q=80&w=2070&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069&auto=format&fit=crop"
   ];
   const [idx, setIdx] = useState(0);
   const [email, setEmail] = useState('mtarifenog@gmail.com');
@@ -157,9 +157,9 @@ const ClientPortfolioView = ({ onNavigate }) => {
   const [newClient, setNewClient] = useState({ name: '', address: '', admin: '' });
 
   const FALLBACK_IMAGES = [
-    "[https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop](https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop)",
-    "[https://images.unsplash.com/photo-1554469384-e58fac16e23a?q=80&w=1000&auto=format&fit=crop](https://images.unsplash.com/photo-1554469384-e58fac16e23a?q=80&w=1000&auto=format&fit=crop)",
-    "[https://images.unsplash.com/photo-1460472178825-e5240623afd5?q=80&w=1000&auto=format&fit=crop](https://images.unsplash.com/photo-1460472178825-e5240623afd5?q=80&w=1000&auto=format&fit=crop)"
+    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1554469384-e58fac16e23a?q=80&w=1000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1460472178825-e5240623afd5?q=80&w=1000&auto=format&fit=crop"
   ];
 
   const loadClients = async () => {
@@ -196,7 +196,7 @@ const ClientPortfolioView = ({ onNavigate }) => {
 
   return (
     <div className="h-full flex flex-col relative">
-      <div className="absolute inset-0 z-0 opacity-10 pointer-events-none"><img src="[https://images.unsplash.com/photo-1506146332389-18140dc7b2fb?q=80&w=2000](https://images.unsplash.com/photo-1506146332389-18140dc7b2fb?q=80&w=2000)" className="w-full h-full object-cover" /></div>
+      <div className="absolute inset-0 z-0 opacity-10 pointer-events-none"><img src="https://images.unsplash.com/photo-1506146332389-18140dc7b2fb?q=80&w=2000" className="w-full h-full object-cover" /></div>
       <div className="relative z-10 flex flex-col h-full">
         <div className="bg-white/90 backdrop-blur px-8 py-5 border-b flex justify-between items-center"><h1 className="text-2xl font-bold">Cartera de Clientes</h1><button onClick={() => setShowModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex gap-2 shadow-lg"><Plus size={20}/> Nuevo</button></div>
         
@@ -290,9 +290,8 @@ const AssetDetailView = ({ onBack }) => {
           <button onClick={onBack} className="bg-white p-2 rounded-lg border hover:text-blue-600"><ArrowLeft size={20}/></button>
           <div><h1 className="text-2xl font-bold">Ascensor Panorámico Torre B</h1><p className="text-gray-500">Edificio Torre Marina • Cliente #402</p></div>
           <div className="ml-auto flex gap-2">
-            {/* Botón Ver QR: Muestra el modal Y TE DA LA URL CLARA */}
             <button 
-                onClick={() => setShowQrModal(true)} 
+                onClick={() => { setShowQrModal(true); alert("URL del QR (Cópiala):\n" + PUBLIC_ACCESS_LINK); }} 
                 className="bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-bold flex gap-2 hover:bg-gray-50"
             >
                 <QrCode size={20}/> Ver QR
@@ -302,7 +301,7 @@ const AssetDetailView = ({ onBack }) => {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="space-y-6">
-            <div className="bg-white p-4 rounded-2xl border shadow-sm"><h3 className="font-bold text-gray-700 mb-3 text-sm">Registro Visual</h3><div className="h-48 rounded-xl overflow-hidden relative"><img src="[https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069](https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069)" className="w-full h-full object-cover" /><div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded">CABINA</div></div></div>
+            <div className="bg-white p-4 rounded-2xl border shadow-sm"><h3 className="font-bold text-gray-700 mb-3 text-sm">Registro Visual</h3><div className="h-48 rounded-xl overflow-hidden relative"><img src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069" className="w-full h-full object-cover" /><div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded">CABINA</div></div></div>
             <div className="bg-white p-6 rounded-2xl border shadow-sm text-sm space-y-3"><h3 className="font-bold text-gray-700 mb-4 flex gap-2"><Settings size={16}/> Ficha Técnica</h3><div className="flex justify-between border-b pb-2"><span className="text-gray-500">Marca</span><span className="font-bold">Otis Gen2</span></div><div className="flex justify-between border-b pb-2"><span className="font-bold">630 Kg</span></div></div>
           </div>
           <div className="lg:col-span-2 space-y-6">
@@ -320,30 +319,141 @@ const AssetDetailView = ({ onBack }) => {
 }
 
 // 5. INSPECTOR APP
-const InspectorDemo = ({ onExit }) => (
-  <div className="bg-gray-100 h-screen overflow-y-auto font-sans text-gray-900 max-w-md mx-auto shadow-2xl relative">
-    <header className="bg-slate-900 text-white p-4 sticky top-0 z-20">
-      <div className="flex justify-between items-center mb-4"><button onClick={onExit} className="text-slate-300 hover:text-white"><ChevronRight className="rotate-180" /></button><h1 className="font-bold">Inspección #4092</h1><div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold">JM</div></div>
-      <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex justify-between items-start"><div><span className="bg-purple-500/20 text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Ascensor</span><h2 className="text-xl font-bold mt-1">Schindler 3300</h2><p className="text-xs text-slate-400">Torre A - Piso 1</p></div><div className="bg-white p-1 rounded"><QrCode className="text-black" size={24} /></div></div>
+const InspectorDemo = ({ onExit }) => {
+  const [checklist, setChecklist] = useState([
+    { id: 1, title: "Nivelación de Parada", desc: "Max +/- 10mm", result: null },
+    { id: 2, title: "Cables de Tracción", desc: "Sin hilos cortados", result: null },
+    { id: 3, title: "Iluminación Emergencia", desc: "Luxometría > 50 lux", result: null },
+  ]);
+  const [saving, setSaving] = useState(false);
+
+  const updateChecklist = (id, result) => {
+    setChecklist(prev => prev.map(item => item.id === id ? { ...item, result: result } : item));
+  };
+  
+  const handleFinalizeInspection = async () => {
+      setSaving(true);
+      const isReprobado = checklist.some(item => item.result === false);
+      const finalStatus = isReprobado ? 'Reprobado' : 'Aprobado';
+      
+      const inspectionData = {
+          asset_id: 'd9b1a4a4-56b9-4a90-8e10-c4d7f8d7c48f', 
+          inspector_email: 'inspector@certifypro.cl', 
+          status: finalStatus,
+          checklist_data: checklist,
+          photos_url: ["https://placehold.co/100x100/green/white?text=Foto1"], 
+          pdf_url: null 
+      };
+
+      try {
+          if (!supabase) throw new Error("Supabase no inicializado.");
+          
+          const { data: { user } } = await supabase.auth.getUser();
+          const inspectorEmail = user?.email || 'inspector@certifypro.cl';
+
+          const { error } = await supabase.from('inspections').insert([{
+             ...inspectionData,
+             inspector_email: inspectorEmail
+          }]);
+
+          if (error) throw error;
+
+          alert(`Inspección finalizada y guardada en Supabase con estado: ${finalStatus}`);
+          onExit(); 
+      } catch (error) {
+          alert("Error al guardar inspección: " + error.message);
+      } finally {
+          setSaving(false);
+      }
+  };
+
+  return (
+    <div className="bg-gray-100 h-screen overflow-y-auto font-sans text-gray-900 max-w-md mx-auto shadow-2xl relative">
+      <header className="bg-slate-900 text-white p-4 sticky top-0 z-20">
+        <div className="flex justify-between items-center mb-4"><button onClick={onExit} className="text-slate-300 hover:text-white"><ChevronRight className="rotate-180" /></button><h1 className="font-bold">Inspección #4092</h1><div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold">JM</div></div>
+        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex justify-between items-start"><div><span className="bg-purple-500/20 text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Ascensor</span><h2 className="text-xl font-bold mt-1">Schindler 3300</h2><p className="text-xs text-slate-400">Torre A - Piso 1</p></div><div className="bg-white p-1 rounded"><QrCode className="text-black" size={24} /></div></div>
     </header>
     <main className="p-4 pb-24 space-y-4">
-      <div className="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center"><div><h4 className="font-bold text-sm">Nivelación Parada</h4><p className="text-xs text-gray-400">Max +/- 10mm</p></div><div className="flex gap-2"><div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-300"><X size={18}/></div><div className="w-8 h-8 rounded bg-green-100 flex items-center justify-center text-green-600"><CheckCircle2 size={18}/></div></div></div>
-      <div className="bg-white p-4 rounded-xl border border-red-200 bg-red-50/20 shadow-sm flex justify-between items-center"><div><h4 className="font-bold text-sm text-red-700">Cables Tracción</h4><p className="text-xs text-gray-400">Sin hilos cortados</p></div><div className="flex gap(2"><div className="w-8 h-8 rounded bg-red-100 flex items-center justify-center text-red-600"><X size={18}/></div><div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-300"><CheckCircle2 size={18}/></div></div></div>
-      <div className="grid grid-cols-2 gap(3 mt-6"><button className="border-2 border-dashed border-gray-300 rounded-xl h-24 flex flex-col items-center justify-center text-gray-400 bg-white"><Camera size={20}/><span className="text-[10px] font-bold mt-1">FOTO SALA</span></button><div className="relative rounded-xl h-24 bg-gray-900 overflow-hidden group"><img src="[https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=300](https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=300)" className="w-full h-full object-cover opacity-80" /><div className="absolute inset-0 flex items-center justify-center"><div className="bg-green-500 text-white p-1 rounded-full"><CheckCircle2 size={16}/></div></div></div></div>
+      {/* CHECKLIST */}
+      <div className="space-y-3">
+          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Seguridad Crítica</h3>
+          {checklist.map(item => (
+              <CheckItem 
+                  key={item.id} 
+                  title={item.title} 
+                  desc={item.desc} 
+                  result={item.result}
+                  onCheck={(res) => updateChecklist(item.id, res)} 
+              />
+          ))}
+      </div>
+      
+      {/* EVIDENCIA */}
+      <div>
+          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">Evidencia Fotográfica (0/3)</h3>
+          <div className="grid grid-cols-3 gap-3">
+              <button className="border-2 border-dashed border-gray-300 rounded-xl h-24 flex flex-col items-center justify-center text-gray-400 bg-gray-50 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-500 transition-all active:scale-95">
+                  <Camera size={24} className="mb-1" />
+                  <span className="text-[10px] font-bold">Foto Cabina</span>
+              </button>
+              <div className="relative rounded-xl h-24 bg-gray-200 overflow-hidden border"></div>
+              <div className="relative rounded-xl h-24 bg-gray-200 overflow-hidden border"></div>
+          </div>
+      </div>
     </main>
-    <div className="fixed bottom-0 max-w-md w-full p-4 bg-white/90 backdrop-blur border-t z-20"><button onClick={onExit} className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl flex items-center justify-center gap(2 shadow-lg"><UploadCloud size={20}/> Finalizar Inspección</button></div>
+    {/* BARRA INFERIOR DE FINALIZACIÓN */}
+    <div className="fixed bottom-0 left-0 right-0 mx-auto max-w-md w-full p-4 bg-white/90 backdrop-blur border-t z-20">
+      <button 
+          onClick={handleFinalizeInspection} 
+          disabled={saving}
+          className="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 transition-all"
+      >
+        {saving ? <Loader2 className="animate-spin" size={18} /> : <UploadCloud size={18} />} 
+        {saving ? "Guardando..." : "Finalizar Inspección"}
+      </button>
+    </div>
   </div>
 );
+
+// Componente de Item de Checklist
+function CheckItem({ title, desc, result, onCheck }) {
+  const isChecked = result === true;
+  const isError = result === false;
+
+  return (
+    <div className={`bg-white p-3.5 rounded-xl border shadow-sm flex justify-between items-center ${isError ? 'border-red-200 bg-red-50/30' : 'border-gray-100'}`}>
+      <div>
+        <h4 className={`font-bold text-sm ${isError ? 'text-red-700' : 'text-gray-900'}`}>{title}</h4>
+        <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+      </div>
+      <div className="flex gap-2 shrink-0">
+        <button 
+          onClick={() => onCheck(false)}
+          className={`p-1.5 rounded-lg transition-colors ${isError ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-500'}`}
+        >
+          <X size={20} />
+        </button>
+        <button 
+          onClick={() => onCheck(true)}
+          className={`p-1.5 rounded-lg transition-colors ${isChecked ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400 hover:bg-green-100 hover:text-green-500'}`}
+        >
+          <CheckCircle2 size={20} />
+        </button>
+      </div>
+    </div>
+  )
+}
 
 // 6. PUBLIC QR VIEW
 const PublicQRDemo = ({ onExit }) => {
   const [activeTab, setActiveTab] = useState('certificate');
   const [qrUrl, setQrUrl] = useState('');
 
+  // ESTA ES LA URL DE ACCESO PÚBLICO
+  const PUBLIC_ACCESS_LINK = window.location.origin + window.location.pathname + '?view=public';
+
   useEffect(() => {
-    // Genera el QR con la URL de acceso público
-    const publicLink = window.location.origin + window.location.pathname + '?view=public';
-    QRCode.toDataURL(publicLink).then(setQrUrl);
+    QRCode.toDataURL(PUBLIC_ACCESS_LINK).then(setQrUrl);
   }, []);
 
   const generatePDF = () => {
@@ -367,7 +477,7 @@ const PublicQRDemo = ({ onExit }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
-      <div className="absolute inset-0 z-0"><img src="[https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069](https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069)" className="w-full h-full object-cover opacity-10 blur-sm" alt="bg" /></div>
+      <div className="absolute inset-0 z-0"><img src="https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069" className="w-full h-full object-cover opacity-10 blur-sm" alt="bg" /></div>
       <div className="bg-white max-w-md w-full rounded-2xl shadow-2xl overflow-hidden relative z-10 border border-gray-100 flex flex-col max-h-[90vh]">
         <div className="bg-green-600 text-white p-6 text-center shrink-0">
           <div className="bg-white/20 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 backdrop-blur-sm"><CheckCircle2 size={24} className="text-white" /></div>
@@ -412,22 +522,30 @@ const PublicQRDemo = ({ onExit }) => {
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
+  const [isPublicAccess, setIsPublicAccess] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('view') === 'public') {
+    const publicAccess = params.get('view') === 'public';
+    
+    setIsPublicAccess(publicAccess);
+
+    if (publicAccess) {
       setIsLoggedIn(true);
       setCurrentView('public');
+      return;
     }
     
     if(supabase && supabase.auth) {
-        supabase.auth.onAuthStateChange((event, session) => {
+        supabase.auth.onAuthStateChanged((event, session) => {
             setIsLoggedIn(!!session);
         });
     }
   }, []);
 
-  if (!isLoggedIn && currentView !== 'public') return <LoginView onLogin={() => setIsLoggedIn(true)} />;
+  if (isPublicAccess) return <PublicQRDemo onExit={() => setCurrentView('dashboard')} />;
+
+  if (!isLoggedIn) return <LoginView onLogin={() => setIsLoggedIn(true)} />;
 
   if (['dashboard', 'clients', 'detail'].includes(currentView)) {
     return (
