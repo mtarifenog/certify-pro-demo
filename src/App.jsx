@@ -45,9 +45,9 @@ try {
 // ==================================================================================
 const LoginView = ({ onLogin }) => {
   const images = [
-    "https://images.unsplash.com/photo-1572697262272-35919e99277b?q=80&w=2070&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1535970793578-775347db1b86?q=80&w=2070&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069&auto=format&fit=crop"
+    "[https://images.unsplash.com/photo-1572697262272-35919e99277b?q=80&w=2070&auto=format&fit=crop](https://images.unsplash.com/photo-1572697262272-35919e99277b?q=80&w=2070&auto=format&fit=crop)",
+    "[https://images.unsplash.com/photo-1535970793578-775347db1b86?q=80&w=2070&auto=format&fit=crop](https://images.unsplash.com/photo-1535970793578-775347db1b86?q=80&w=2070&auto=format&fit=crop)",
+    "[https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069&auto=format&fit=crop](https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069&auto=format&fit=crop)"
   ];
   const [idx, setIdx] = useState(0);
   const [email, setEmail] = useState('mtarifenog@gmail.com');
@@ -157,9 +157,9 @@ const ClientPortfolioView = ({ onNavigate }) => {
   const [newClient, setNewClient] = useState({ name: '', address: '', admin: '' });
 
   const FALLBACK_IMAGES = [
-    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1554469384-e58fac16e23a?q=80&w=1000&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1460472178825-e5240623afd5?q=80&w=1000&auto=format&fit=crop"
+    "[https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop](https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop)",
+    "[https://images.unsplash.com/photo-1554469384-e58fac16e23a?q=80&w=1000&auto=format&fit=crop](https://images.unsplash.com/photo-1554469384-e58fac16e23a?q=80&w=1000&auto=format&fit=crop)",
+    "[https://images.unsplash.com/photo-1460472178825-e5240623afd5?q=80&w=1000&auto=format&fit=crop](https://images.unsplash.com/photo-1460472178825-e5240623afd5?q=80&w=1000&auto=format&fit=crop)"
   ];
 
   const loadClients = async () => {
@@ -196,7 +196,7 @@ const ClientPortfolioView = ({ onNavigate }) => {
 
   return (
     <div className="h-full flex flex-col relative">
-      <div className="absolute inset-0 z-0 opacity-10 pointer-events-none"><img src="https://images.unsplash.com/photo-1506146332389-18140dc7b2fb?q=80&w=2000" className="w-full h-full object-cover" /></div>
+      <div className="absolute inset-0 z-0 opacity-10 pointer-events-none"><img src="[https://images.unsplash.com/photo-1506146332389-18140dc7b2fb?q=80&w=2000](https://images.unsplash.com/photo-1506146332389-18140dc7b2fb?q=80&w=2000)" className="w-full h-full object-cover" /></div>
       <div className="relative z-10 flex flex-col h-full">
         <div className="bg-white/90 backdrop-blur px-8 py-5 border-b flex justify-between items-center"><h1 className="text-2xl font-bold">Cartera de Clientes</h1><button onClick={() => setShowModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex gap-2 shadow-lg"><Plus size={20}/> Nuevo</button></div>
         
@@ -290,6 +290,7 @@ const AssetDetailView = ({ onBack }) => {
           <button onClick={onBack} className="bg-white p-2 rounded-lg border hover:text-blue-600"><ArrowLeft size={20}/></button>
           <div><h1 className="text-2xl font-bold">Ascensor Panorámico Torre B</h1><p className="text-gray-500">Edificio Torre Marina • Cliente #402</p></div>
           <div className="ml-auto flex gap-2">
+            {/* Botón Ver QR: Muestra el modal Y TE DA LA URL CLARA */}
             <button 
                 onClick={() => setShowQrModal(true)} 
                 className="bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-bold flex gap-2 hover:bg-gray-50"
@@ -301,7 +302,7 @@ const AssetDetailView = ({ onBack }) => {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="space-y-6">
-            <div className="bg-white p-4 rounded-2xl border shadow-sm"><h3 className="font-bold text-gray-700 mb-3 text-sm">Registro Visual</h3><div className="h-48 rounded-xl overflow-hidden relative"><img src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069" className="w-full h-full object-cover" /><div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded">CABINA</div></div></div>
+            <div className="bg-white p-4 rounded-2xl border shadow-sm"><h3 className="font-bold text-gray-700 mb-3 text-sm">Registro Visual</h3><div className="h-48 rounded-xl overflow-hidden relative"><img src="[https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069](https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069)" className="w-full h-full object-cover" /><div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded">CABINA</div></div></div>
             <div className="bg-white p-6 rounded-2xl border shadow-sm text-sm space-y-3"><h3 className="font-bold text-gray-700 mb-4 flex gap-2"><Settings size={16}/> Ficha Técnica</h3><div className="flex justify-between border-b pb-2"><span className="text-gray-500">Marca</span><span className="font-bold">Otis Gen2</span></div><div className="flex justify-between border-b pb-2"><span className="font-bold">630 Kg</span></div></div>
           </div>
           <div className="lg:col-span-2 space-y-6">
@@ -328,7 +329,7 @@ const InspectorDemo = ({ onExit }) => (
     <main className="p-4 pb-24 space-y-4">
       <div className="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center"><div><h4 className="font-bold text-sm">Nivelación Parada</h4><p className="text-xs text-gray-400">Max +/- 10mm</p></div><div className="flex gap-2"><div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-300"><X size={18}/></div><div className="w-8 h-8 rounded bg-green-100 flex items-center justify-center text-green-600"><CheckCircle2 size={18}/></div></div></div>
       <div className="bg-white p-4 rounded-xl border border-red-200 bg-red-50/20 shadow-sm flex justify-between items-center"><div><h4 className="font-bold text-sm text-red-700">Cables Tracción</h4><p className="text-xs text-gray-400">Sin hilos cortados</p></div><div className="flex gap(2"><div className="w-8 h-8 rounded bg-red-100 flex items-center justify-center text-red-600"><X size={18}/></div><div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-300"><CheckCircle2 size={18}/></div></div></div>
-      <div className="grid grid-cols-2 gap(3 mt-6"><button className="border-2 border-dashed border-gray-300 rounded-xl h-24 flex flex-col items-center justify-center text-gray-400 bg-white"><Camera size={20}/><span className="text-[10px] font-bold mt-1">FOTO SALA</span></button><div className="relative rounded-xl h-24 bg-gray-900 overflow-hidden group"><img src="https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=300" className="w-full h-full object-cover opacity-80" /><div className="absolute inset-0 flex items-center justify-center"><div className="bg-green-500 text-white p-1 rounded-full"><CheckCircle2 size={16}/></div></div></div></div>
+      <div className="grid grid-cols-2 gap(3 mt-6"><button className="border-2 border-dashed border-gray-300 rounded-xl h-24 flex flex-col items-center justify-center text-gray-400 bg-white"><Camera size={20}/><span className="text-[10px] font-bold mt-1">FOTO SALA</span></button><div className="relative rounded-xl h-24 bg-gray-900 overflow-hidden group"><img src="[https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=300](https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=300)" className="w-full h-full object-cover opacity-80" /><div className="absolute inset-0 flex items-center justify-center"><div className="bg-green-500 text-white p-1 rounded-full"><CheckCircle2 size={16}/></div></div></div></div>
     </main>
     <div className="fixed bottom-0 max-w-md w-full p-4 bg-white/90 backdrop-blur border-t z-20"><button onClick={onExit} className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl flex items-center justify-center gap(2 shadow-lg"><UploadCloud size={20}/> Finalizar Inspección</button></div>
   </div>
@@ -366,7 +367,7 @@ const PublicQRDemo = ({ onExit }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
-      <div className="absolute inset-0 z-0"><img src="https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069" className="w-full h-full object-cover opacity-10 blur-sm" alt="bg" /></div>
+      <div className="absolute inset-0 z-0"><img src="[https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069](https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069)" className="w-full h-full object-cover opacity-10 blur-sm" alt="bg" /></div>
       <div className="bg-white max-w-md w-full rounded-2xl shadow-2xl overflow-hidden relative z-10 border border-gray-100 flex flex-col max-h-[90vh]">
         <div className="bg-green-600 text-white p-6 text-center shrink-0">
           <div className="bg-white/20 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 backdrop-blur-sm"><CheckCircle2 size={24} className="text-white" /></div>
@@ -411,18 +412,12 @@ const PublicQRDemo = ({ onExit }) => {
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
-  const [isPublicAccess, setIsPublicAccess] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const publicAccess = params.get('view') === 'public';
-    
-    setIsPublicAccess(publicAccess);
-
-    if (publicAccess) {
+    if (params.get('view') === 'public') {
       setIsLoggedIn(true);
       setCurrentView('public');
-      return;
     }
     
     if(supabase && supabase.auth) {
@@ -432,9 +427,7 @@ export default function App() {
     }
   }, []);
 
-  if (isPublicAccess) return <PublicQRDemo onExit={() => setCurrentView('dashboard')} />;
-
-  if (!isLoggedIn) return <LoginView onLogin={() => setIsLoggedIn(true)} />;
+  if (!isLoggedIn && currentView !== 'public') return <LoginView onLogin={() => setIsLoggedIn(true)} />;
 
   if (['dashboard', 'clients', 'detail'].includes(currentView)) {
     return (
