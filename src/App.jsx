@@ -224,7 +224,7 @@ const ClientPortfolioView = ({ onNavigate }) => {
               </div>
               
               <div className="p-5 flex-1 flex flex-col justify-between bg-white">
-                <div className="flex flex-wrap gap(2 mb-4">
+                <div className="flex flex-wrap gap-2 mb-4">
                    <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-md font-bold border border-blue-100 flex items-center gap-1"><Building2 size={12} /> Ver Equipos</span>
                 </div>
                 <div className="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
@@ -261,16 +261,21 @@ const AssetDetailView = ({ onBack }) => {
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
 
+  // ESTA ES LA URL DE ACCESO PÚBLICO
+  const PUBLIC_ACCESS_LINK = window.location.origin + window.location.pathname + '?view=public';
+
   useEffect(() => {
     // Genera el QR con la URL de acceso público
-    const publicLink = window.location.origin + window.location.pathname + '?view=public';
-    QRCode.toDataURL(window.location.href).then(setQrUrl);
+    QRCode.toDataURL(PUBLIC_ACCESS_LINK).then(setQrUrl);
   }, []);
 
   const generatePDF = async () => {
     const doc = new jsPDF();
     const certID = Math.random().toString(36).substr(2, 9).toUpperCase();
-    const qrImage = await QRCode.toDataURL(window.location.origin + window.location.pathname + '?view=public');
+    
+    // El QR en el PDF también debe usar la ruta pública correcta
+    const qrImage = await QRCode.toDataURL(PUBLIC_ACCESS_LINK);
+    
     doc.setLineWidth(1); doc.setDrawColor(34, 197, 94); doc.rect(10, 10, 190, 277);
     doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(30, 58, 138); doc.text("CERTIFICADO DE CONFORMIDAD", 105, 40, null, null, "center");
     doc.setFillColor(240); doc.rect(20, 155, 80, 60, 'FD'); doc.rect(110, 155, 80, 60, 'FD');
@@ -285,7 +290,12 @@ const AssetDetailView = ({ onBack }) => {
           <button onClick={onBack} className="bg-white p-2 rounded-lg border hover:text-blue-600"><ArrowLeft size={20}/></button>
           <div><h1 className="text-2xl font-bold">Ascensor Panorámico Torre B</h1><p className="text-gray-500">Edificio Torre Marina • Cliente #402</p></div>
           <div className="ml-auto flex gap-2">
-            <button onClick={() => setShowQrModal(true)} className="bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-bold flex gap-2 hover:bg-gray-50"><QrCode size={20}/> Ver QR</button>
+            <button 
+                onClick={() => setShowQrModal(true)} 
+                className="bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-bold flex gap-2 hover:bg-gray-50"
+            >
+                <QrCode size={20}/> Ver QR
+            </button>
             <button className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold shadow-lg">Nueva Inspección</button>
           </div>
         </div>
@@ -330,7 +340,9 @@ const PublicQRDemo = ({ onExit }) => {
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
-    QRCode.toDataURL(window.location.href).then(setQrUrl);
+    // Genera el QR con la URL de acceso público
+    const publicLink = window.location.origin + window.location.pathname + '?view=public';
+    QRCode.toDataURL(publicLink).then(setQrUrl);
   }, []);
 
   const generatePDF = () => {
@@ -399,12 +411,18 @@ const PublicQRDemo = ({ onExit }) => {
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
+  const [isPublicAccess, setIsPublicAccess] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('view') === 'public') {
+    const publicAccess = params.get('view') === 'public';
+    
+    setIsPublicAccess(publicAccess);
+
+    if (publicAccess) {
       setIsLoggedIn(true);
       setCurrentView('public');
+      return;
     }
     
     if(supabase && supabase.auth) {
@@ -414,7 +432,9 @@ export default function App() {
     }
   }, []);
 
-  if (!isLoggedIn && currentView !== 'public') return <LoginView onLogin={() => setIsLoggedIn(true)} />;
+  if (isPublicAccess) return <PublicQRDemo onExit={() => setCurrentView('dashboard')} />;
+
+  if (!isLoggedIn) return <LoginView onLogin={() => setIsLoggedIn(true)} />;
 
   if (['dashboard', 'clients', 'detail'].includes(currentView)) {
     return (
