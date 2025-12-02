@@ -98,7 +98,9 @@ const LoginView = ({ onLogin }) => {
   );
 };
 
+// ==================================================================================
 // 2. DASHBOARD VIEW
+// ==================================================================================
 const DashboardView = ({ onNavigate }) => {
   const [stats, setStats] = useState({ clients: 0, assets: 0, critical: 0 });
   const [loading, setLoading] = useState(true);
@@ -111,10 +113,10 @@ const DashboardView = ({ onNavigate }) => {
             const { count: clientsCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
             const { count: assetsCount } = await supabase.from('assets').select('*', { count: 'exact', head: true });
             const { count: criticalCount } = await supabase.from('assets').select('*', { count: 'exact', head: true }).eq('status', 'vencido');
-            const { data: assetsData } = await supabase.from('inspections').select('*').order('created_at', { ascending: false }).limit(5);
+            const { data: inspectionsData } = await supabase.from('inspections').select('*').order('created_at', { ascending: false }).limit(5);
             
             setStats({ clients: clientsCount || 0, assets: assetsCount || 0, critical: criticalCount || 0 });
-            setRecent(assetsData || []);
+            setRecent(inspectionsData || []);
         } catch (error) {
             console.error("Error cargando dashboard:", error);
         } finally {
@@ -133,9 +135,10 @@ const DashboardView = ({ onNavigate }) => {
         <div className="bg-white p-6 rounded-xl border shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase flex gap-2"><Building2 size={16}/> Cobertura</p><p className="text-3xl font-bold text-gray-900 mt-2">{stats.clients}</p></div>
       </div>
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-800">Últimas Inspecciones Realizadas</h3>{loading && <Loader2 className="animate-spin text-blue-500" size={18} />}</div>
+        <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-800">Últimas Inspecciones</h3>{loading && <Loader2 className="animate-spin text-blue-500" size={18} />}</div>
         <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500 font-medium"><tr><th className="px-6 py-3">Cliente / Activo</th><th className="px-6 py-3">Fecha</th><th className="px-6 py-3">Estado</th><th className="px-6 py-3 text-right">Acción</th></tr></thead>
-          <tbody className="divide-y divide-gray-100">{recent.map(insp => (
+          <tbody className="divide-y divide-gray-100">
+            {recent.map(insp => (
             <tr key={insp.id} className="hover:bg-blue-50/50 cursor-pointer">
               <td className="px-6 py-4 font-semibold text-gray-900">{insp.client_name || "Activo General"}</td>
               <td className="px-6 py-4 text-gray-600">{new Date(insp.created_at).toLocaleDateString()}</td>
@@ -151,7 +154,9 @@ const DashboardView = ({ onNavigate }) => {
   );
 };
 
+// ==================================================================================
 // 3. CLIENT PORTFOLIO VIEW
+// ==================================================================================
 const ClientPortfolioView = ({ onNavigate }) => {
   const [clients, setClients] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -258,23 +263,27 @@ const ClientPortfolioView = ({ onNavigate }) => {
   );
 };
 
+// ==================================================================================
 // 4. ASSET DETAIL VIEW
+// ==================================================================================
 const AssetDetailView = ({ onBack }) => {
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
 
-  // ESTA ES LA URL DE ACCESO PÚBLICO
-  const PUBLIC_ACCESS_LINK = window.location.origin + window.location.pathname + '?view=public';
+  // URL CORRECTA
+  const PUBLIC_ACCESS_LINK = typeof window !== 'undefined' ? `${window.location.origin}/?view=public` : '';
 
   useEffect(() => {
-    // Genera el QR con la URL de acceso público
-    QRCode.toDataURL(PUBLIC_ACCESS_LINK).then(setQrUrl);
-  }, []);
+    if (PUBLIC_ACCESS_LINK) {
+      QRCode.toDataURL(PUBLIC_ACCESS_LINK).then(setQrUrl);
+    }
+  }, [PUBLIC_ACCESS_LINK]);
 
   const generatePDF = async () => {
     const doc = new jsPDF();
     const certID = Math.random().toString(36).substr(2, 9).toUpperCase();
-    const qrImage = await QRCode.toDataURL(window.location.origin + window.location.pathname + '?view=public');
+    const qrImage = await QRCode.toDataURL(PUBLIC_ACCESS_LINK);
+    
     doc.setLineWidth(1); doc.setDrawColor(34, 197, 94); doc.rect(10, 10, 190, 277);
     doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(30, 58, 138); doc.text("CERTIFICADO DE CONFORMIDAD", 105, 40, null, null, "center");
     doc.setFillColor(240); doc.rect(20, 155, 80, 60, 'FD'); doc.rect(110, 155, 80, 60, 'FD');
@@ -289,7 +298,7 @@ const AssetDetailView = ({ onBack }) => {
           <button onClick={onBack} className="bg-white p-2 rounded-lg border hover:text-blue-600"><ArrowLeft size={20}/></button>
           <div><h1 className="text-2xl font-bold">Ascensor Panorámico Torre B</h1><p className="text-gray-500">Edificio Torre Marina • Cliente #402</p></div>
           <div className="ml-auto flex gap-2">
-            <button onClick={() => { setShowQrModal(true); alert("URL del QR (Cópiala):\n" + PUBLIC_ACCESS_LINK); }} className="bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-bold flex gap-2 hover:bg-gray-50"><QrCode size={20}/> Ver QR</button>
+            <button onClick={() => { setShowQrModal(true); alert("URL del QR:\n" + PUBLIC_ACCESS_LINK); }} className="bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-bold flex gap-2 hover:bg-gray-50"><QrCode size={20}/> Ver QR</button>
             <button className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold shadow-lg">Nueva Inspección</button>
           </div>
         </div>
@@ -310,10 +319,13 @@ const AssetDetailView = ({ onBack }) => {
       {showQrModal && <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowQrModal(false)}><div className="bg-white p-8 rounded-2xl max-w-sm w-full text-center animate-in zoom-in" onClick={e => e.stopPropagation()}><h3 className="text-xl font-bold mb-2">Etiqueta Digital</h3><p className="text-sm text-gray-500 mb-6">Escanea esto con tu celular.</p><div className="bg-white border-2 border-dashed p-4 mb-6 rounded-xl flex justify-center">{qrUrl ? <img src={qrUrl} className="w-48 h-48" /> : <Loader2 className="animate-spin"/>}</div><button onClick={() => setShowQrModal(false)} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold">Cerrar</button></div></div>}
     </div>
   );
-}
+};
 
-// 5. INSPECTOR APP
+// ==================================================================================
+// 5. INSPECTOR APP (CONEXIÓN REAL DB)
+// ==================================================================================
 const InspectorDemo = ({ onExit }) => {
+  const [activeTab, setActiveTab] = useState('checklist'); 
   const [checklist, setChecklist] = useState([
     { id: 1, title: "Nivelación de Parada", desc: "Max +/- 10mm", result: null },
     { id: 2, title: "Cables de Tracción", desc: "Sin hilos cortados", result: null },
@@ -321,11 +333,11 @@ const InspectorDemo = ({ onExit }) => {
   ]);
   const [comments, setComments] = useState('');
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('checklist');
   const [stickerQr, setStickerQr] = useState('');
 
   useEffect(() => {
-    const publicLink = window.location.origin + window.location.pathname + '?view=public';
+    // QR URL
+    const publicLink = window.location.origin + '/?view=public';
     QRCode.toDataURL(publicLink).then(setStickerQr);
   }, []);
 
@@ -339,7 +351,7 @@ const InspectorDemo = ({ onExit }) => {
       const finalStatus = isReprobado ? 'Reprobado' : 'Aprobado';
       
       const inspectionData = {
-          client_name: "Edificio Torre Marina", 
+          client_name: "Edificio Torre Marina (Demo)",
           status: finalStatus,
           checklist_data: checklist,
           photos_url: ["https://placehold.co/100x100/green/white?text=Evidencia"], 
@@ -469,11 +481,11 @@ function CheckItem({ title, desc, result, onCheck }) {
   )
 }
 
-// 6. PUBLIC QR VIEW
+// 6. PUBLIC QR VIEW (CON DEEP LINKING SEGURO)
 const PublicQRDemo = ({ onExit }) => {
   const [activeTab, setActiveTab] = useState('certificate');
   const [qrUrl, setQrUrl] = useState('');
-  const PUBLIC_ACCESS_LINK = window.location.origin + window.location.pathname + '?view=public';
+  const PUBLIC_ACCESS_LINK = window.location.origin + '/?view=public';
 
   useEffect(() => {
     QRCode.toDataURL(PUBLIC_ACCESS_LINK).then(setQrUrl);
@@ -488,7 +500,9 @@ const PublicQRDemo = ({ onExit }) => {
 
   const bitacora = [
     { fecha: "15 Nov 2024", evento: "Certificación Anual", tecnico: "Jaime Soto", s: "Aprobado" },
-    { fecha: "10 Oct 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", s: "Ok" }
+    { fecha: "10 Oct 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", s: "Ok" },
+    { fecha: "12 Sep 2024", evento: "Cambio de Rodamientos", tecnico: "Carlos R.", s: "Corregido" },
+    { fecha: "10 Ago 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", s: "Ok" },
   ];
 
   return (
@@ -501,30 +515,33 @@ const PublicQRDemo = ({ onExit }) => {
           <p className="text-green-100 text-xs font-medium uppercase tracking-wider">Operativo y Seguro</p>
         </div>
         <div className="flex border-b border-gray-100 bg-gray-50/50">
-          <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400'}`}>Certificado</button>
-          <button onClick={() => setActiveTab('bitacora')} className={`flex-1 py-3 text-sm font-bold ${activeTab === 'bitacora' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400'}`}>Bitácora</button>
+          <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
+            <FileText size={16} /> Certificado
+          </button>
+          <button onClick={() => setActiveTab('bitacora')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'bitacora' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}><History size={16} /> Bitácora</button>
         </div>
-        <div className="flex-1 p-6 overflow-y-auto bg-white">
+        <div className="flex-1 overflow-y-auto p-0 bg-white">
           {activeTab === 'certificate' && (
-            <div className="text-center">
-              <h2 className="text-gray-900 font-bold text-lg mb-1">Ascensor Pasajeros Torre A</h2>
-              <p className="text-gray-500 text-sm mb-6">Schindler 3300 • ID: 12.344-5</p>
-              <button onClick={generatePDF} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg"><Download size={18}/> Descargar PDF Oficial</button>
+            <div className="p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="text-center mb-6"><h2 className="text-gray-900 font-bold text-lg">Ascensor Pasajeros Torre A</h2><p className="text-gray-500 text-sm">Schindler 3300 • ID: 12.344-5</p></div>
+              <div className="bg-blue-50 rounded-xl p-4 border border-blue-100 mb-6 flex justify-between items-center"><div><p className="text-[10px] text-blue-400 font-bold uppercase">Última Mantención</p><p className="text-lg font-bold text-blue-900">15 Nov 2024</p></div><div className="text-right"><p className="text-[10px] text-blue-400 font-bold uppercase">Próxima Visita</p><p className="text-sm font-bold text-blue-600">15 Dic 2024</p></div></div>
+              <div className="space-y-3">
+                <button onClick={generatePDF} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap(2 shadow-md"><Download size={18}/> Descargar PDF Oficial</button>
+                <div className="text-center mt-4"><p className="text-xs text-gray-400">Certificación Ley 20.296</p></div>
+              </div>
             </div>
           )}
           {activeTab === 'bitacora' && (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 animate-in fade-in slide-in-from-bottom-2 duration-300">
               {bitacora.map((log, i) => (
-                <div key={i} className="py-3 flex justify-between items-center">
-                  <div><h4 className="text-sm font-bold text-gray-900">{log.evento}</h4><p className="text-xs text-gray-500">{log.fecha}</p></div>
-                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">{log.s}</span>
-                </div>
+                <div key={i} className="p-4 hover:bg-gray-50 transition-colors flex items-start gap(3"><div className="bg-gray-100 p-2 rounded-lg text-gray-500 mt-1"><Calendar size={16} /></div><div className="flex-1"><div className="flex justify-between items-start"><h4 className="text-sm font-bold text-gray-900">{log.evento}</h4><span className="text-xs text-gray-400 font-medium">{log.fecha}</span></div><p className="text-xs text-gray-500 mt-1 flex items-center gap(1"><User size={10} /> {log.tecnico}</p><span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${['Aprobado', 'Ok'].includes(log.s) ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700'}`}>{log.s}</span></div></div>
               ))}
             </div>
           )}
         </div>
-        <div className="bg-gray-50 p-3 text-center border-t"><p className="text-[10px] text-gray-400">Plataforma CertifyPro Cloud</p></div>
+        <div className="bg-gray-50 p-3 text-center border-t shrink-0"><p className="text-[10px] text-gray-400 flex items-center justify-center gap(1">Plataforma CertifyPro Cloud <ExternalLink size={8} /></p></div>
       </div>
+      <button className="mt-6 text-red-500 text-xs font-bold flex items-center gap(2 hover:bg-red-50 px-4 py-2 rounded-full transition-all relative z-20"><AlertTriangle size={14} /> Reportar Falla</button>
     </div>
   );
 };
@@ -564,7 +581,7 @@ export default function App() {
     return (
       <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans">
         <aside className="w-64 bg-slate-900 text-white hidden md:flex flex-col h-screen sticky top-0">
-          <div className="p-6 border-b border-slate-800 flex gap-2 items-center"><div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold">C</div><span className="font-bold text-xl">CertifyPro</span></div>
+          <div className="p-6 border-b border-slate-800 flex gap(2 items-center"><div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold">C</div><span className="font-bold text-xl">CertifyPro</span></div>
           <nav className="flex-1 p-4 space-y-2">
             {[
               { id: 'dashboard', icon: <LayoutDashboard size={20}/>, label: 'Radar de Negocio' },
@@ -572,24 +589,24 @@ export default function App() {
               { id: 'inspector', icon: <Smartphone size={20}/>, label: 'App Inspector' },
               { id: 'public', icon: <QrCode size={20}/>, label: 'QR Público' },
             ].map(item => (
-              <button key={item.id} onClick={() => setCurrentView(item.id)} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors ${currentView === item.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+              <button key={item.id} onClick={() => setCurrentView(item.id)} className={`w-full flex items-center gap(3 px-3 py-3 rounded-lg text-left transition-colors ${currentView === item.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                 {item.icon} <span className="font-medium text-sm">{item.label}</span>
               </button>
             ))}
           </nav>
           <div className="p-4 border-t border-slate-800">
             <div className="bg-slate-800 rounded-xl p-4 mb-3"><p className="text-xs text-slate-400 mb-1">Saldo</p><p className="text-xl font-bold">14 Créditos</p></div>
-            <button onClick={() => { setIsLoggedIn(false); if(supabase && supabase.auth) supabase.auth.signOut(); }} className="flex gap-2 text-slate-400 hover:text-white text-sm px-2"><LogOut size={16}/> Salir</button>
+            <button onClick={() => { setIsLoggedIn(false); if(supabase && supabase.auth) supabase.auth.signOut(); }} className="flex gap(2 text-slate-400 hover:text-white text-sm px-2"><LogOut size={16}/> Salir</button>
           </div>
         </aside>
 
         <main className="flex-1 h-screen overflow-hidden flex flex-col">
           <header className="h-16 bg-white border-b flex justify-between items-center px-6 shrink-0">
-            <div className="flex items-center gap-4 text-gray-400">
+            <div className="flex items-center gap(4 text-gray-400">
               <Menu className="md:hidden text-gray-600" />
-              <div className="hidden md:flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg w-64"><Search size={18}/><input placeholder="Buscar..." className="bg-transparent outline-none text-sm w-full"/></div>
+              <div className="hidden md:flex items-center gap(2 bg-gray-100 px-4 py-2 rounded-lg w-64"><Search size={18}/><input placeholder="Buscar..." className="bg-transparent outline-none text-sm w-full"/></div>
             </div>
-            <div className="flex items-center gap-4"><Bell size={20} className="text-gray-400"/><div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">JA</div></div>
+            <div className="flex items-center gap(4"><Bell size={20} className="text-gray-400"/><div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">JA</div></div>
           </header>
           <div className="flex-1 overflow-hidden">
             {currentView === 'dashboard' && <DashboardView onNavigate={setCurrentView} />}
