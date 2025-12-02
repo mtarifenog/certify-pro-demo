@@ -4,7 +4,7 @@ import {
   Building2, Lock, Mail, ArrowRight, CheckCircle2, Search, Bell, 
   ChevronRight, AlertTriangle, TrendingUp, AlertOctagon, Plus, MapPin, 
   MoreVertical, X, Loader2, ArrowLeft, Settings, History, Download, 
-  ShieldCheck, ExternalLink, Camera, UploadCloud, Menu, FileText, Calendar, User
+  ShieldCheck, ExternalLink, Camera, UploadCloud, Menu, FileText, Calendar, User, Printer, Share2, MessageSquare
 } from 'lucide-react';
 
 // --- LIBRERÍAS REALES ---
@@ -111,7 +111,7 @@ const DashboardView = ({ onNavigate }) => {
             const { count: clientsCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
             const { count: assetsCount } = await supabase.from('assets').select('*', { count: 'exact', head: true });
             const { count: criticalCount } = await supabase.from('assets').select('*', { count: 'exact', head: true }).eq('status', 'vencido');
-            const { data: assetsData } = await supabase.from('assets').select('*, clients(name)').order('created_at', { ascending: false }).limit(5);
+            const { data: assetsData } = await supabase.from('inspections').select('*').order('created_at', { ascending: false }).limit(5);
             
             setStats({ clients: clientsCount || 0, assets: assetsCount || 0, critical: criticalCount || 0 });
             setRecent(assetsData || []);
@@ -133,16 +133,18 @@ const DashboardView = ({ onNavigate }) => {
         <div className="bg-white p-6 rounded-xl border shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase flex gap-2"><Building2 size={16}/> Cobertura</p><p className="text-3xl font-bold text-gray-900 mt-2">{stats.clients}</p></div>
       </div>
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-800">Inventario Reciente</h3>{loading && <Loader2 className="animate-spin text-blue-500" size={18} />}</div>
-        <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500 font-medium"><tr><th className="px-6 py-3">Cliente</th><th className="px-6 py-3">Activo</th><th className="px-6 py-3">Estado</th><th className="px-6 py-3 text-right">Acción</th></tr></thead>
-          <tbody className="divide-y divide-gray-100">{recent.map(asset => (
-            <tr key={asset.id} className="hover:bg-blue-50/50 cursor-pointer" onClick={() => onNavigate('detail')}>
-              <td className="px-6 py-4 font-semibold text-gray-900">{asset.clients?.name}</td>
-              <td className="px-6 py-4 text-gray-600">{asset.name}</td>
-              <td className="px-6 py-4"><span className={`px-2 py-1 rounded text-xs font-bold flex w-fit gap-1 ${asset.status === 'vencido' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{asset.status === 'vencido' ? <AlertTriangle size={12}/> : <CheckCircle2 size={12}/>} {asset.status}</span></td>
-              <td className="px-6 py-4 text-right text-blue-600 font-bold text-xs">Ver Ficha →</td>
+        <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-800">Últimas Inspecciones Realizadas</h3>{loading && <Loader2 className="animate-spin text-blue-500" size={18} />}</div>
+        <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500 font-medium"><tr><th className="px-6 py-3">Cliente / Activo</th><th className="px-6 py-3">Fecha</th><th className="px-6 py-3">Estado</th><th className="px-6 py-3 text-right">Acción</th></tr></thead>
+          <tbody className="divide-y divide-gray-100">{recent.map(insp => (
+            <tr key={insp.id} className="hover:bg-blue-50/50 cursor-pointer">
+              <td className="px-6 py-4 font-semibold text-gray-900">{insp.client_name || "Activo General"}</td>
+              <td className="px-6 py-4 text-gray-600">{new Date(insp.created_at).toLocaleDateString()}</td>
+              <td className="px-6 py-4"><span className={`px-2 py-1 rounded text-xs font-bold flex w-fit gap-1 ${insp.status === 'Reprobado' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{insp.status}</span></td>
+              <td className="px-6 py-4 text-right text-blue-600 font-bold text-xs">Ver Informe →</td>
             </tr>
-          ))}</tbody>
+          ))}
+          {!loading && recent.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400">No hay inspecciones recientes.</td></tr>}
+          </tbody>
         </table>
       </div>
     </div>
@@ -272,10 +274,7 @@ const AssetDetailView = ({ onBack }) => {
   const generatePDF = async () => {
     const doc = new jsPDF();
     const certID = Math.random().toString(36).substr(2, 9).toUpperCase();
-    
-    // El QR en el PDF también debe usar la ruta pública correcta
-    const qrImage = await QRCode.toDataURL(PUBLIC_ACCESS_LINK);
-    
+    const qrImage = await QRCode.toDataURL(window.location.origin + window.location.pathname + '?view=public');
     doc.setLineWidth(1); doc.setDrawColor(34, 197, 94); doc.rect(10, 10, 190, 277);
     doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(30, 58, 138); doc.text("CERTIFICADO DE CONFORMIDAD", 105, 40, null, null, "center");
     doc.setFillColor(240); doc.rect(20, 155, 80, 60, 'FD'); doc.rect(110, 155, 80, 60, 'FD');
@@ -290,12 +289,7 @@ const AssetDetailView = ({ onBack }) => {
           <button onClick={onBack} className="bg-white p-2 rounded-lg border hover:text-blue-600"><ArrowLeft size={20}/></button>
           <div><h1 className="text-2xl font-bold">Ascensor Panorámico Torre B</h1><p className="text-gray-500">Edificio Torre Marina • Cliente #402</p></div>
           <div className="ml-auto flex gap-2">
-            <button 
-                onClick={() => { setShowQrModal(true); alert("URL del QR (Cópiala):\n" + PUBLIC_ACCESS_LINK); }} 
-                className="bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-bold flex gap-2 hover:bg-gray-50"
-            >
-                <QrCode size={20}/> Ver QR
-            </button>
+            <button onClick={() => { setShowQrModal(true); alert("URL del QR (Cópiala):\n" + PUBLIC_ACCESS_LINK); }} className="bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-bold flex gap-2 hover:bg-gray-50"><QrCode size={20}/> Ver QR</button>
             <button className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold shadow-lg">Nueva Inspección</button>
           </div>
         </div>
@@ -325,7 +319,15 @@ const InspectorDemo = ({ onExit }) => {
     { id: 2, title: "Cables de Tracción", desc: "Sin hilos cortados", result: null },
     { id: 3, title: "Iluminación Emergencia", desc: "Luxometría > 50 lux", result: null },
   ]);
+  const [comments, setComments] = useState('');
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('checklist');
+  const [stickerQr, setStickerQr] = useState('');
+
+  useEffect(() => {
+    const publicLink = window.location.origin + window.location.pathname + '?view=public';
+    QRCode.toDataURL(publicLink).then(setStickerQr);
+  }, []);
 
   const updateChecklist = (id, result) => {
     setChecklist(prev => prev.map(item => item.id === id ? { ...item, result: result } : item));
@@ -337,19 +339,20 @@ const InspectorDemo = ({ onExit }) => {
       const finalStatus = isReprobado ? 'Reprobado' : 'Aprobado';
       
       const inspectionData = {
-          asset_id: 'd9b1a4a4-56b9-4a90-8e10-c4d7f8d7c48f', 
-          inspector_email: 'inspector@certifypro.cl', 
+          client_name: "Edificio Torre Marina", 
           status: finalStatus,
           checklist_data: checklist,
-          photos_url: ["https://placehold.co/100x100/green/white?text=Foto1"], 
+          photos_url: ["https://placehold.co/100x100/green/white?text=Evidencia"], 
+          comments: comments,
           pdf_url: null 
       };
 
       try {
-          if (!supabase) throw new Error("Supabase no inicializado.");
+          if (!supabase) throw new Error("Supabase no conectado");
           
-          const { data: { user } } = await supabase.auth.getUser();
-          const inspectorEmail = user?.email || 'inspector@certifypro.cl';
+          let inspectorEmail = 'inspector@certifypro.cl';
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData?.user) inspectorEmail = userData.user.email;
 
           const { error } = await supabase.from('inspections').insert([{
              ...inspectionData,
@@ -358,10 +361,10 @@ const InspectorDemo = ({ onExit }) => {
 
           if (error) throw error;
 
-          alert(`Inspección finalizada y guardada en Supabase con estado: ${finalStatus}`);
+          alert(`¡Inspección Guardada! Estado: ${finalStatus}`);
           onExit(); 
       } catch (error) {
-          alert("Error al guardar inspección: " + error.message);
+          alert("Error al guardar: " + error.message);
       } finally {
           setSaving(false);
       }
@@ -373,53 +376,85 @@ const InspectorDemo = ({ onExit }) => {
         <div className="flex justify-between items-center mb-4"><button onClick={onExit} className="text-slate-300 hover:text-white"><ChevronRight className="rotate-180" /></button><h1 className="font-bold">Inspección #4092</h1><div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold">JM</div></div>
         <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex justify-between items-start"><div><span className="bg-purple-500/20 text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Ascensor</span><h2 className="text-xl font-bold mt-1">Schindler 3300</h2><p className="text-xs text-slate-400">Torre A - Piso 1</p></div><div className="bg-white p-1 rounded"><QrCode className="text-black" size={24} /></div></div>
     </header>
-    <main className="p-4 pb-24 space-y-4">
-      {/* CHECKLIST */}
-      <div className="space-y-3">
-          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Seguridad Crítica</h3>
-          {checklist.map(item => (
-              <CheckItem 
-                  key={item.id} 
-                  title={item.title} 
-                  desc={item.desc} 
-                  result={item.result}
-                  onCheck={(res) => updateChecklist(item.id, res)} 
-              />
-          ))}
-      </div>
-      
-      {/* EVIDENCIA */}
-      <div>
-          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">Evidencia Fotográfica (0/3)</h3>
-          <div className="grid grid-cols-3 gap-3">
-              <button className="border-2 border-dashed border-gray-300 rounded-xl h-24 flex flex-col items-center justify-center text-gray-400 bg-gray-50 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-500 transition-all active:scale-95">
-                  <Camera size={24} className="mb-1" />
-                  <span className="text-[10px] font-bold">Foto Cabina</span>
-              </button>
-              <div className="relative rounded-xl h-24 bg-gray-200 overflow-hidden border"></div>
-              <div className="relative rounded-xl h-24 bg-gray-200 overflow-hidden border"></div>
-          </div>
-      </div>
-    </main>
-    {/* BARRA INFERIOR DE FINALIZACIÓN */}
-    <div className="fixed bottom-0 left-0 right-0 mx-auto max-w-md w-full p-4 bg-white/90 backdrop-blur border-t z-20">
-      <button 
-          onClick={handleFinalizeInspection} 
-          disabled={saving}
-          className="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 transition-all"
-      >
-        {saving ? <Loader2 className="animate-spin" size={18} /> : <UploadCloud size={18} />} 
-        {saving ? "Guardando..." : "Finalizar Inspección"}
-      </button>
+    
+    <div className="flex p-1 bg-gray-200/50 mx-4 mt-4 rounded-lg mb-2">
+      <button onClick={() => setActiveTab('checklist')} className={`flex-1 py-2 px-2 text-xs font-bold rounded-md transition-all ${activeTab === 'checklist' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500'}`}>Checklist</button>
+      <button onClick={() => setActiveTab('sticker')} className={`flex-1 py-2 px-2 text-xs font-bold rounded-md transition-all ${activeTab === 'sticker' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500'}`}>🖨️ Sticker QR</button>
     </div>
+
+    <main className="p-4 pb-24 space-y-4">
+      {activeTab === 'checklist' && (
+        <>
+          <div className="space-y-3">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Seguridad Crítica</h3>
+              {checklist.map(item => (
+                  <CheckItem key={item.id} title={item.title} desc={item.desc} result={item.result} onCheck={(res) => updateChecklist(item.id, res)} />
+              ))}
+          </div>
+          
+          <div className="mt-4">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Observaciones</h3>
+              <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex gap-3">
+                  <MessageSquare className="text-gray-400 shrink-0" size={20} />
+                  <textarea 
+                      className="w-full text-sm outline-none resize-none h-20" 
+                      placeholder="Escriba detalles técnicos o fallas encontradas..."
+                      value={comments}
+                      onChange={(e) => setComments(e.target.value)}
+                  ></textarea>
+              </div>
+          </div>
+
+          <div className="mt-4">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">Evidencia Fotográfica (0/3)</h3>
+              <div className="grid grid-cols-3 gap-3">
+                  <button className="border-2 border-dashed border-gray-300 rounded-xl h-24 flex flex-col items-center justify-center text-gray-400 bg-gray-50 hover:bg-blue-50 hover:border-blue-400 transition-all active:scale-95">
+                      <Camera size={24} className="mb-1" />
+                      <span className="text-[10px] font-bold">Foto Cabina</span>
+                  </button>
+                  <div className="relative rounded-xl h-24 bg-gray-200 overflow-hidden border"></div>
+              </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'sticker' && (
+        <div className="bg-white p-6 rounded-xl border-2 border-black shadow-xl animate-in zoom-in">
+            <div className="text-center mb-4">
+                <h3 className="text-2xl font-black uppercase">Equipo Certificado</h3>
+                <p className="text-xs text-gray-500 font-bold tracking-widest">LEY 20.296</p>
+            </div>
+            <div className="flex justify-center mb-4">
+                {stickerQr && <img src={stickerQr} className="w-48 h-48 border-4 border-black rounded-lg" alt="QR" />}
+            </div>
+            <div className="text-center space-y-2">
+                <p className="text-sm font-bold">Escanea para verificar</p>
+                <p className="text-xs text-gray-400">ID: #4092-SCH-A</p>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                    <button className="bg-gray-100 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-2 hover:bg-gray-200"><Printer size={14}/> Imprimir</button>
+                    <button className="bg-blue-50 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-2 text-blue-700 hover:bg-blue-100"><Share2 size={14}/> Compartir</button>
+                </div>
+            </div>
+        </div>
+      )}
+    </main>
+
+    {activeTab === 'checklist' && (
+      <div className="fixed bottom-0 left-0 right-0 mx-auto max-w-md w-full p-4 bg-white/90 backdrop-blur border-t z-20">
+        <button onClick={handleFinalizeInspection} disabled={saving} className="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 transition-all">
+          {saving ? <Loader2 className="animate-spin" size={18} /> : <UploadCloud size={18} />} 
+          {saving ? "Guardando..." : "Finalizar Inspección"}
+        </button>
+      </div>
+    )}
   </div>
 );
+};
 
 // Componente de Item de Checklist
 function CheckItem({ title, desc, result, onCheck }) {
   const isChecked = result === true;
   const isError = result === false;
-
   return (
     <div className={`bg-white p-3.5 rounded-xl border shadow-sm flex justify-between items-center ${isError ? 'border-red-200 bg-red-50/30' : 'border-gray-100'}`}>
       <div>
@@ -427,18 +462,8 @@ function CheckItem({ title, desc, result, onCheck }) {
         <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
       </div>
       <div className="flex gap-2 shrink-0">
-        <button 
-          onClick={() => onCheck(false)}
-          className={`p-1.5 rounded-lg transition-colors ${isError ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-500'}`}
-        >
-          <X size={20} />
-        </button>
-        <button 
-          onClick={() => onCheck(true)}
-          className={`p-1.5 rounded-lg transition-colors ${isChecked ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400 hover:bg-green-100 hover:text-green-500'}`}
-        >
-          <CheckCircle2 size={20} />
-        </button>
+        <button onClick={() => onCheck(false)} className={`p-1.5 rounded-lg transition-colors ${isError ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-500'}`}><X size={20} /></button>
+        <button onClick={() => onCheck(true)} className={`p-1.5 rounded-lg transition-colors ${isChecked ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400 hover:bg-green-100 hover:text-green-500'}`}><CheckCircle2 size={20} /></button>
       </div>
     </div>
   )
@@ -448,8 +473,6 @@ function CheckItem({ title, desc, result, onCheck }) {
 const PublicQRDemo = ({ onExit }) => {
   const [activeTab, setActiveTab] = useState('certificate');
   const [qrUrl, setQrUrl] = useState('');
-
-  // ESTA ES LA URL DE ACCESO PÚBLICO
   const PUBLIC_ACCESS_LINK = window.location.origin + window.location.pathname + '?view=public';
 
   useEffect(() => {
@@ -458,21 +481,14 @@ const PublicQRDemo = ({ onExit }) => {
 
   const generatePDF = () => {
     const doc = new jsPDF();
-    doc.setLineWidth(1); doc.setDrawColor(34, 197, 94); doc.rect(10, 10, 190, 277);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(30, 58, 138); 
     doc.text("CERTIFICADO DE CONFORMIDAD", 105, 40, null, null, "center");
-    doc.setFillColor(240); doc.rect(20, 155, 80, 60, 'FD'); doc.rect(110, 155, 80, 60, 'FD');
-    doc.setFontSize(10); doc.setTextColor(150); doc.text("FOTO 1: CABINA", 60, 185, null, null, "center");
-    doc.text("FOTO 2: MÁQUINAS", 150, 185, null, null, "center");
     if(qrUrl) doc.addImage(qrUrl, 'PNG', 160, 230, 30, 30);
     doc.save("Certificado_Oficial_Ascensor.pdf");
   };
 
   const bitacora = [
     { fecha: "15 Nov 2024", evento: "Certificación Anual", tecnico: "Jaime Soto", s: "Aprobado" },
-    { fecha: "10 Oct 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", s: "Ok" },
-    { fecha: "12 Sep 2024", evento: "Cambio de Rodamientos", tecnico: "Carlos R.", s: "Corregido" },
-    { fecha: "10 Ago 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", s: "Ok" },
+    { fecha: "10 Oct 2024", evento: "Mantención Preventiva", tecnico: "Carlos R.", s: "Ok" }
   ];
 
   return (
@@ -485,33 +501,30 @@ const PublicQRDemo = ({ onExit }) => {
           <p className="text-green-100 text-xs font-medium uppercase tracking-wider">Operativo y Seguro</p>
         </div>
         <div className="flex border-b border-gray-100 bg-gray-50/50">
-          <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
-            <FileText size={16} /> Certificado
-          </button>
-          <button onClick={() => setActiveTab('bitacora')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap(2 transition-colors ${activeTab === 'bitacora' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}><History size={16} /> Bitácora</button>
+          <button onClick={() => setActiveTab('certificate')} className={`flex-1 py-3 text-sm font-bold ${activeTab === 'certificate' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400'}`}>Certificado</button>
+          <button onClick={() => setActiveTab('bitacora')} className={`flex-1 py-3 text-sm font-bold ${activeTab === 'bitacora' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-gray-400'}`}>Bitácora</button>
         </div>
-        <div className="flex-1 overflow-y-auto p-0 bg-white">
+        <div className="flex-1 p-6 overflow-y-auto bg-white">
           {activeTab === 'certificate' && (
-            <div className="p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="text-center mb-6"><h2 className="text-gray-900 font-bold text-lg">Ascensor Pasajeros Torre A</h2><p className="text-gray-500 text-sm">Schindler 3300 • ID: 12.344-5</p></div>
-              <div className="bg-blue-50 rounded-xl p-4 border border-blue-100 mb-6 flex justify-between items-center"><div><p className="text-[10px] text-blue-400 font-bold uppercase">Última Mantención</p><p className="text-lg font-bold text-blue-900">15 Nov 2024</p></div><div className="text-right"><p className="text-[10px] text-blue-400 font-bold uppercase">Próxima Visita</p><p className="text-sm font-bold text-blue-600">15 Dic 2024</p></div></div>
-              <div className="space-y-3">
-                <button onClick={generatePDF} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap(2 shadow-md"><Download size={18}/> Descargar PDF Oficial</button>
-                <div className="text-center mt-4"><p className="text-xs text-gray-400">Certificación Ley 20.296</p></div>
-              </div>
+            <div className="text-center">
+              <h2 className="text-gray-900 font-bold text-lg mb-1">Ascensor Pasajeros Torre A</h2>
+              <p className="text-gray-500 text-sm mb-6">Schindler 3300 • ID: 12.344-5</p>
+              <button onClick={generatePDF} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg"><Download size={18}/> Descargar PDF Oficial</button>
             </div>
           )}
           {activeTab === 'bitacora' && (
-            <div className="divide-y divide-gray-100 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="divide-y divide-gray-100">
               {bitacora.map((log, i) => (
-                <div key={i} className="p-4 hover:bg-gray-50 transition-colors flex items-start gap(3"><div className="bg-gray-100 p-2 rounded-lg text-gray-500 mt-1"><Calendar size={16} /></div><div className="flex-1"><div className="flex justify-between items-start"><h4 className="text-sm font-bold text-gray-900">{log.evento}</h4><span className="text-xs text-gray-400 font-medium">{log.fecha}</span></div><p className="text-xs text-gray-500 mt-1 flex items-center gap(1"><User size={10} /> {log.tecnico}</p><span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${['Aprobado', 'Ok'].includes(log.s) ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700'}`}>{log.s}</span></div></div>
+                <div key={i} className="py-3 flex justify-between items-center">
+                  <div><h4 className="text-sm font-bold text-gray-900">{log.evento}</h4><p className="text-xs text-gray-500">{log.fecha}</p></div>
+                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">{log.s}</span>
+                </div>
               ))}
             </div>
           )}
         </div>
-        <div className="bg-gray-50 p-3 text-center border-t shrink-0"><p className="text-[10px] text-gray-400 flex items-center justify-center gap(1">Plataforma CertifyPro Cloud <ExternalLink size={8} /></p></div>
+        <div className="bg-gray-50 p-3 text-center border-t"><p className="text-[10px] text-gray-400">Plataforma CertifyPro Cloud</p></div>
       </div>
-      <button className="mt-6 text-red-500 text-xs font-bold flex items-center gap(2 hover:bg-red-50 px-4 py-2 rounded-full transition-all relative z-20"><AlertTriangle size={14} /> Reportar Falla</button>
     </div>
   );
 };
@@ -537,7 +550,7 @@ export default function App() {
     }
     
     if(supabase && supabase.auth) {
-        supabase.auth.onAuthStateChanged((event, session) => {
+        supabase.auth.onAuthStateChange((event, session) => {
             setIsLoggedIn(!!session);
         });
     }
